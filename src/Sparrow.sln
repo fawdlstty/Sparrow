@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29123.88
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparrowServer", "SparrowServer\SparrowServer.csproj", "{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestServer", "TestServer\TestServer.csproj", "{FD5F2767-2E35-42A5-95A2-A14958D3AC20}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FD5F2767-2E35-42A5-95A2-A14958D3AC20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD5F2767-2E35-42A5-95A2-A14958D3AC20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD5F2767-2E35-42A5-95A2-A14958D3AC20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD5F2767-2E35-42A5-95A2-A14958D3AC20}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B1C41F39-6F91-46EC-9458-3A3B169C2CBB}
+	EndGlobalSection
+EndGlobal
