@@ -13,8 +13,14 @@ namespace SparrowServer.Attributes {
 	}
 
 	// Method 方法
+	public interface IWEBMethod { string Type { get; } string Summary { get; } string Description { get; } }
+	public class WEBMethodAttribute : Attribute, IWEBMethod {
+		public WEBMethodAttribute (string summary, string description = "") { Summary = summary; Description = description; }
+		public string Type { get { return ""; } }
+		public string Summary { get; private set; }
+		public string Description { get; private set; }
+	}
 	public class WEBMethod {
-		public interface IWEBMethod { string Type { get; } string Summary { get; } string Description { get; } }
 		public class GETAttribute : Attribute, IWEBMethod {
 			public GETAttribute (string summary, string description = "") { Summary = summary; Description = description; }
 			public string Type { get { return "GET"; } }

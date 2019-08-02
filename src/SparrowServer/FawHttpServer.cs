@@ -61,17 +61,16 @@ namespace SparrowServer {
 					_builder.add_module (_type.Name, _module_prefix, _module_attr.m_description);
 					//
 					foreach (var _method in _type.GetMethods ()) {
-						var _method_attrs = (from p in _method.GetCustomAttributes () where p is WEBMethod.IWEBMethod select p as WEBMethod.IWEBMethod);
+						var _method_attrs = (from p in _method.GetCustomAttributes () where p is IWEBMethod select p as IWEBMethod);
 						if (_method_attrs.Count () == 0)
 							continue;
 						var _method_attr = _method_attrs.First ();
 						var _params = _method.GetGenericArguments ();
-						var _request_type = _method_attr.Type;
 						//
-						_builder.add_method (_type.Name, _request_type, _method.Name, _method_attr.Summary, _method_attr.Description);
+						_builder.add_method (_type.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
 						string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
 						if ((_params?.Length ?? 0) == 0) {
-							add_handler ($"{_request_type} {_path_prefix}", new RequestStruct (_method));
+							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method));
 						}
 					}
 				}
@@ -120,6 +119,9 @@ namespace SparrowServer {
 							bool _proc = false;
 							if (m_request_handlers.ContainsKey ($"{_req.m_method} {_req.m_path}")) {
 								m_request_handlers [$"{_req.m_method} {_req.m_path}"].process (_req, _res);
+								_proc = true;
+							} else if (m_request_handlers.ContainsKey ($" {_req.m_path}")) {
+								m_request_handlers [$" {_req.m_path}"].process (_req, _res);
 								_proc = true;
 							}
 							if (!_proc)
