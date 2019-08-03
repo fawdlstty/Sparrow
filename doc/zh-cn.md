@@ -37,7 +37,7 @@ public static string test_hello () {
 {"result":"success","content":"hello world"}
 ```
 
-Web方法同时支持异常的处理，假如test_hello方法体内容改为
+Web方法同时支持异常的处理，假如test_hello方法体内容改为：
 
 ```csharp
 throw new Exception ("What's your problem?");
@@ -76,4 +76,62 @@ Sparrow 对外提供swagger文档，启动项目后，通过访问 `http://127.0
 
 然后可以来看看方法的返回值与参数。这儿设计的非常灵活，既可以以最简单的方式实现`Rest RPC`，也能作为一个正常的HTTP服务器来对外提供HTTP服务。下面我说说对于方法的示例：
 
+```csharp
+[WEBMethod ("test method1")]
+public static string test_hello1 (string name) {
+    return $"hello, {name}";
+}
+```
+
+此方法的调用方式是<http://127.0.0.1:1234/api/Hello/test_hello1?name=michael>
+
+其中name参数可以是GET变量，也可以是POST变量。返回内容为：`{"result":"success","content":"hello, michael"}`
+
+参数还有一种类型，称之为请求变量类型，这种类型不需要调用者传递，而是直接从请求会话中取值。目前支持四种类型，示例：
+
+```csharp
+[WEBMethod ("test test_context")]
+public static void test_context (FawRequest _req, FawResponse _res) {
+    _res.write ("hello world");
+}
+
+[WEBMethod ("test test_context")]
+public static string test_context1 ([WEBParam.IP] string ip, [WEBParam.AgentIP] string agent_ip) {
+    return "hello world";
+}
+```
+
+`test_context` 方法是原始类型请求，这种请求不需要返回值，如果需要返回内容直接通过_res变量的方法直接处理即可。比如此处使用write方法返回内容。这时候写入的内容将不经过json包装，调用者获得的返回数据是 `hello world`。
+
+`test_context1` 方法的两个参数分别有WEBParam标记，被标记的方法不需要调用者传递，直接从请求内容中取的。其中 `WEBParam.IP` 含义为取得调用者的IP（注意：此参数调用者可能伪造），还有就是 `WEBParam.AgentIP`，此参数为调用者使用的正向代理的IP（注意：此参数调用者可能伪造）。
+
 ### 返回值的类型
+
+返回值在参数中没有 `FawResponse` 的情况下有效。当返回 `byte` 类型或 `byte []` 类型时，返回内容将不做处理，直接返回给调用者；如果返回其他类型比如 `int`、`string` 等类型时，将会经过json包装；另外不论返回值类型，直接抛出异常后，也会返回经过json包装的错误提示内容。由于异常处理在C#中非常低效，实际测试将会使得QPS达到非常低的地步，所以建议在所有函数处理均加上 `try...catch` ，避免异常传递。
+
+### 任务模式
+
+任务模式指web方法返回 `Task` 或 `Task<T>`，不限是否添加 `async` 关键字的情况。任何任务方法和其他普通web方法一样，均采用同步的方式对调用者进行返回。示例如下：
+
+```csharp
+[WEBMethod.GET ("test test_task1")]
+public static Task test_task1 (FawRequest _req, FawResponse _res) {
+    _res.write ("hello world");
+    return Task.CompletedTask;
+}
+
+[WEBMethod.PUT ("test test_task2")]
+public static async Task test_task2 (FawRequest _req, FawResponse _res) {
+    _res.write ("hello world");
+}
+
+[WEBMethod.POST ("test test_task3")]
+public static Task<string> test_task3 () {
+    return Task.FromResult ("hello world");
+}
+
+[WEBMethod.DELETE ("test test_task4")]
+public static async Task<string> test_task4 () {
+    return "hello world";
+}
+```

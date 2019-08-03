@@ -1,8 +1,8 @@
 # Sparrow
 
-Sparrow is a C# HTTP/REST/RPC Network Library, the name is from "麻雀虽小，五脏俱全".
+Sparrow is a C# HTTP/REST/RPC Network Library, it can be very easy to act as an HTTP server or heterogeneous RPC service provider, the name is from "麻雀虽小，五脏俱全".
 
-Sparrow（麻雀）是一个C#的 HTTP/REST/RPC 网络库，名称源于“麻雀虽小，五脏俱全”。
+Sparrow（麻雀）是一个C#的 HTTP/REST/RPC 网络库，可以非常容易的作为HTTP服务器或异构RPC服务提供者，名称源于“麻雀虽小，五脏俱全”。
 
 Usage / 用法：
 
