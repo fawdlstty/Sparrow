@@ -47,8 +47,9 @@ namespace SparrowServer {
 			} else if (_type == typeof (DateTime)) {
 				return (object) _var_str.to_datetime ();
 			} else {
-				var _method = typeof (JsonConvert).GetMethod ("DeserializeObject").MakeGenericMethod (_type);
-				return _method.Invoke (null, new object [] { _var_str });
+				return JsonConvert.DeserializeObject (_var_str, _type);
+				//var _method = typeof (JsonConvert).GetMethod ("DeserializeObject").MakeGenericMethod (_type);
+				//return _method.Invoke (null, new object [] { _var_str });
 			}
 		}
 	}

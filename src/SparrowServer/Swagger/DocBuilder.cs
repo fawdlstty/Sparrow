@@ -5,18 +5,25 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Swagger {
-	class _DocMethod {
-		public string m_request_type;
-		public string m_name;
-		public string m_summary;
-		public string m_description;
-	}
-
 	class _DocModule {
 		public string m_name;
 		public string m_prefix;
 		public string m_description;
 		public List<_DocMethod> m_methods = new List<_DocMethod> ();
+	}
+
+	class _DocMethod {
+		public string m_request_type;
+		public string m_name;
+		public string m_summary;
+		public string m_description;
+		public List<_DocParam> m_params = new List<_DocParam> ();
+	}
+
+	class _DocParam {
+		public string m_name;
+		public string m_type;
+		public string m_description;
 	}
 
 	public class DocBuilder {
@@ -62,14 +69,32 @@ namespace SparrowServer.Swagger {
 			if (_description.is_null ())
 				_description = _summary;
 			for (int i = m_modules.Count - 1; i >= 0; --i) {
-				if (m_modules[i].m_name == _module_name) {
-					if ((from p in m_modules[i].m_methods where p.m_request_type == _request_type && p.m_name == _method_name select 1).Count () > 0)
+				if (m_modules [i].m_name == _module_name) {
+					if ((from p in m_modules [i].m_methods where p.m_request_type == _request_type && p.m_name == _method_name select 1).Count () > 0)
 						throw new Exception ("Repeated addition of methods / 方法重复添加");
 					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_summary = _summary, m_description = _description });
 					return;
 				}
 			}
-			throw new Exception ("Module not added / 模块未添加");
+			throw new Exception ("Module is not added / 模块未添加");
+		}
+
+		public void add_param (string _module_name, string _request_type, string _method_name, string _param_name, string _param_type, string _description = "") {
+			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
+				throw new Exception ("Name format error / 名称格式错误");
+			for (int i = m_modules.Count - 1; i >= 0; --i) {
+				if (m_modules [i].m_name == _module_name) {
+					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
+						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
+							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
+								throw new Exception ("Repeated addition of params / 参数重复添加");
+							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = _description });
+							return;
+						}
+					}
+				}
+			}
+			throw new Exception ("Module or method is not added / 模块或方法未添加");
 		}
 
 		public string build () {
@@ -81,6 +106,16 @@ namespace SparrowServer.Swagger {
 					["description"] = _module.m_description,
 				});
 				foreach (var _method in _module.m_methods) {
+					var _parameters = new JArray ();
+					foreach (var _param in _method.m_params) {
+						_parameters.Add (new JObject {
+							["in"] = "query",
+							["name"] = _param.m_name,
+							["description"] = _param.m_description,
+							["required"] = true,
+							["type"] = _param.m_type,
+						});
+					}
 					_paths [$"/api/{_module.m_prefix}/{_method.m_name}"] = new JObject {
 						[_method.m_request_type.ToLower ()] = new JObject {
 							["tags"] = new JArray () { _module.m_name },
@@ -89,9 +124,7 @@ namespace SparrowServer.Swagger {
 							["operationId"] = "",
 							["consumes"] = new JArray { "application/json", "application/x-www-form-urlencoded" },
 							["produces"] = new JArray { "application/json" },
-							["parameters"] = new JArray {
-								////////////////////////////
-							},
+							["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },
 								["500"] = new JObject { ["description"] = "fail" },

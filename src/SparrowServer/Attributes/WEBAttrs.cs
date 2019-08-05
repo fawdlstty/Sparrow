@@ -47,7 +47,12 @@ namespace SparrowServer.Attributes {
 		}
 	}
 
+
+
 	// Parameter / 参数
+	public class WEBParamAttribute : Attribute {
+
+	}
 	public class WEBParam {
 		public interface IWEBParam { string Name { get; } }
 		public class IPAttribute : Attribute, IWEBParam { public string Name { get { return "IP"; } } }

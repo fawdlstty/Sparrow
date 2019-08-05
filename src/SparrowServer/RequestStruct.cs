@@ -14,15 +14,17 @@ namespace SparrowServer {
 			if (!m_method.IsStatic)
 				throw new Exception ("Method must be static / 方法必须声明为静态");
 			foreach (var _param in m_method.GetParameters ()) {
-				var _attrs = (from p in _param.GetCustomAttributes () where p is WEBParam.IWEBParam select p as WEBParam.IWEBParam);
-				if (_attrs.Count () > 0) {
-					m_params.Add ((null, _attrs.First ().Name));
-				} else if (_param.ParameterType == typeof (FawRequest)) {
+				if (_param.ParameterType == typeof (FawRequest)) {
 					m_params.Add ((null, "FawRequest"));
 				} else if (_param.ParameterType == typeof (FawResponse)) {
 					m_params.Add ((null, "FawResponse"));
 				} else {
-					m_params.Add ((_param.ParameterType, _param.Name));
+					var _attrs = (from p in _param.GetCustomAttributes () where p is IReqParam select p as IReqParam);
+					if (_attrs.Count () > 0) {
+						m_params.Add ((null, _attrs.First ().Name));
+					} else{
+						m_params.Add ((_param.ParameterType, _param.Name));
+					}
 				}
 			}
 		}
@@ -42,10 +44,10 @@ namespace SparrowServer {
 							_params [i] = _res;
 							_ignore_return = true;
 							break;
-						case "IP":
+						case ":IP":
 							_params [i] = _req.m_ip;
 							break;
-						case "AgentIP":
+						case ":AgentIP":
 							_params [i] = _req.m_agent_ip;
 							break;
 						default:
@@ -70,7 +72,7 @@ namespace SparrowServer {
 					} else if (_ret is byte [] _bytes) {
 						_res.write (_bytes);
 					} else {
-						string _content = _ret.to_str ();
+						string _content = (_ret.GetType ().IsPrimitive ? _ret.to_str () : _ret.to_json ());
 						object _o;
 						if (_content == "") {
 							_o = new { result = "success" };

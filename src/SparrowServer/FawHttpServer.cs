@@ -31,7 +31,8 @@ namespace SparrowServer {
 
 
 
-		public FawHttpServer (ushort port) {
+		public FawHttpServer (Assembly assembly, ushort port) {
+			m_assembly = assembly;
 			//https://www.w3cschool.cn/swaggerbootstrapui/swaggerbootstrapui-31rf32is.html
 			string _local_path = Path.GetDirectoryName (typeof (FawHttpServer).Assembly.Location).Replace ('\\', '/');
 			//
@@ -52,30 +53,8 @@ namespace SparrowServer {
 			}
 		}
 
-		public void set_doc_info (Assembly assembly, WEBDocInfo doc_info) {
-			Swagger.DocBuilder _builder = new Swagger.DocBuilder (doc_info);
-			foreach (var _type in assembly.GetTypes ()) {
-				var _module_attr = _type.GetCustomAttribute (typeof (WEBModuleAttribute), true) as WEBModuleAttribute;
-				if (_module_attr != null) {
-					string _module_prefix = (_type.Name.right_is_nocase ("Module") ? _type.Name.left (_type.Name.Length - 6) : _type.Name);
-					_builder.add_module (_type.Name, _module_prefix, _module_attr.m_description);
-					//
-					foreach (var _method in _type.GetMethods ()) {
-						var _method_attrs = (from p in _method.GetCustomAttributes () where p is IWEBMethod select p as IWEBMethod);
-						if (_method_attrs.Count () == 0)
-							continue;
-						var _method_attr = _method_attrs.First ();
-						var _params = _method.GetGenericArguments ();
-						//
-						_builder.add_method (_type.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
-						string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
-						if ((_params?.Length ?? 0) == 0) {
-							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method));
-						}
-					}
-				}
-			}
-			m_swagger_data = _builder.build ().to_bytes ();
+		public void set_doc_info (WEBDocInfo doc_info) {
+			m_doc_info = doc_info;
 		}
 
 		// 处理一次请求
@@ -222,6 +201,38 @@ namespace SparrowServer {
 
 		// 循环请求
 		public void run () {
+
+			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info) : null);
+			foreach (var _module in m_assembly.GetTypes ()) {
+				var _module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
+				if (_module_attr != null) {
+					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
+					_builder?.add_module (_module.Name, _module_prefix, _module_attr.m_description);
+					//
+					foreach (var _method in _module.GetMethods ()) {
+						var _method_attrs = (from p in _method.GetCustomAttributes () where p is IHTTPMethod select p as IHTTPMethod);
+						if (_method_attrs.Count () == 0)
+							continue;
+						var _method_attr = _method_attrs.First ();
+						var _params = _method.GetParameters ();
+						//
+						_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
+						string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
+						foreach (var _param in _params) {
+							if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
+								continue;
+							if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
+								continue;
+							var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
+							var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
+							_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
+						}
+						add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method));
+					}
+				}
+			}
+			m_swagger_data = _builder?.build ().to_bytes ();
+			//
 			new Thread (() => {
 				while (true) {
 					Thread.Sleep (10000);
@@ -239,6 +250,8 @@ namespace SparrowServer {
 			}
 		}
 
+		private Assembly m_assembly = null;
+		private WEBDocInfo m_doc_info = null;
 		private string m_wwwroot = "";
 		private HttpListener m_listener = null;
 		private byte [] m_swagger_data = null;

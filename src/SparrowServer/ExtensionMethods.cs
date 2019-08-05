@@ -49,9 +49,11 @@ namespace SparrowServer {
 				return (f + 0.000001).ToString ("0.00");
             } else if (o is double d) {
 				return (d + 0.000001).ToString ("0.00");
+            } else if (o is string s) {
+				return s;
             } else {
-                return o.ToString ();
-            }
+				return o.ToString ();
+			}
         }
 
 		// 字符串转 utf8 字节数组

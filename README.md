@@ -13,9 +13,9 @@ using System;
 using System.Threading.Tasks;
 
 namespace TestServer {
-    [WEBModule ("hello world模块")]
+    [HTTPModule ("hello world模块")]
     public class HelloModule {
-        [WEBMethod ("Test Hello World")]
+        [HTTP ("Test Hello World")]
         public static string test_hello () {
             return "hello world";
         }

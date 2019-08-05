@@ -3,9 +3,9 @@
 I'll walk you through the project with this sample code.
 
 ```csharp
-[WEBModule ("hello world模块")]
+[HTTPModule ("hello world模块")]
 public class HelloModule {
-    [WEBMethod ("Test Hello World")]
+    [HTTP ("Test Hello World")]
     public static string test_hello () {
         return "hello world";
     }
@@ -16,16 +16,16 @@ public class HelloModule {
 
 There are three conditions for a module to be a Sparrow module:
 
-* Add the [WEBModule] Attribute to the module
+* Add the [HTTPModule] Attribute to the module
 * The class name of a Module needs to end with 'Module', such as' UserServiceModule ', 'TestModule', etc
 * A module can only be in one project, and then needs to pass the project Assembly to HttpServer before it finally takes effect
 
 ## Sparrow Method
 
-The service method must be within the service module class, which means that if the class does not have the sparrow service module Attribute (webmodule), the method is not identifiable. The other method must be declared static
+The service method must be within the service module class, which means that if the class does not have the sparrow service module Attribute (HTTPModule), the method is not identifiable. The other method must be declared static
 
 ```csharp
-[WEBMethod ("test method")]
+[HTTP ("test method")]
 public static string test_hello () {
     return "hello world";
 }
@@ -62,13 +62,13 @@ The HTTPS approach is not supported here, and considering that it is not recomme
 
 ### Attribute
 
-The method must have Web method Attribute [WEBMethod], with two parameters, method description and method description in detail;The latter can be omitted and the differences are as follows:
+The method must have Web method Attribute [HTTP], with two parameters, method description and method description in detail;The latter can be omitted and the differences are as follows:
 
-* [WEBMethod]：Unlimited HTTP request type then specified
-* [WEBMethod.GET]：Only GET requests can be invoke
-* [WEBMethod.PUT]：Only PUT requests can be invoke
-* [WEBMethod.POST]：Only POST requests can be invoke
-* [WEBMethod.DELETE]：Only DELETE requests can be invoke
+* [HTTP]：Unlimited HTTP request type then specified
+* [HTTP.GET]：Only GET requests can be invoke
+* [HTTP.PUT]：Only PUT requests can be invoke
+* [HTTP.POST]：Only POST requests can be invoke
+* [HTTP.DELETE]：Only DELETE requests can be invoke
 
 ### Parameter
 
@@ -77,7 +77,7 @@ Parameters can be specified in two types. The first type is the request paramete
 You can then look at the method's return values and parameters.It is designed to be very flexible, both to implement 'Rest RPC' in the simplest way and to provide HTTP services as a normal HTTP server.Here's an example of a method:
 
 ```csharp
-[WEBMethod ("test method1")]
+[HTTP ("test method1")]
 public static string test_hello1 (string name) {
     return $"hello, {name}";
 }
@@ -87,23 +87,32 @@ This method is invoke by <http://127.0.0.1:1234/api/Hello/test_hello1?name=micha
 
 The name parameter can be a GET variable or a POST variable.The return contents are: `{"result":"success","content":"hello, michael"}`
 
+Parameters can be annotated as required.When added, the description of the parameters can be automatically generated when the document is generated. Example:
+
+```csharp
+[HTTP ("test method1")]
+public static string test_hello1 ([Param ("test name")] string name) {
+    return $"hello, {name}";
+}
+```
+
 There is another type of parameter, called the request variable type, which does not need to be passed by the caller but takes its value directly from the request session.Four types are currently supported, for example:
 
 ```csharp
-[WEBMethod ("test test_context")]
+[HTTP ("test test_context")]
 public static void test_context (FawRequest _req, FawResponse _res) {
     _res.write ("hello world");
 }
 
-[WEBMethod ("test test_context")]
-public static string test_context1 ([WEBParam.IP] string ip, [WEBParam.AgentIP] string agent_ip) {
+[HTTP ("test test_context")]
+public static string test_context1 ([ReqParam.IP] string ip, [ReqParam.AgentIP] string agent_ip) {
     return "hello world";
 }
 ```
 
 The 'test_context' method is the primitive type request, this request does not need to return a value, if you need to return content directly through the _res variable method directly processed.For example, use the write method to return content here.At this point, the content written will not go through json wrapping, and the return data obtained by the caller is 'hello world'.
 
-The two parameters of the 'test_context1' method have WEBParam attributes, respectively. The marked method does not need to be passed by the caller and is taken directly from the request content.Where 'webparam.IP' means to obtain the IP of the caller (note: the caller may forge this parameter), and 'webparam.AgentIP', which is the IP of the forward proxy used by the caller (note: the caller may forge this parameter).
+The two parameters of the 'test_context1' method have ReqParam attributes, respectively. The marked method does not need to be passed by the caller and is taken directly from the request content.Where 'ReqParam.IP' means to obtain the IP of the caller (note: the caller may forge this parameter), and 'ReqParam.AgentIP', which is the IP of the forward proxy used by the caller (note: the caller may forge this parameter).
 
 ### Type of return value
 
@@ -114,24 +123,52 @@ The return value is valid without 'FawResponse' in the parameter.When 'byte' or 
 Task returns refers to the web method that returns 'Task' or 'Task\<T>', regardless of whether 'async' keyword is added.Any task method, like any normal web method, returns to callers synchronously.Examples are as follows:
 
 ```csharp
-[WEBMethod.GET ("test test_task1")]
+[HTTP.GET ("test test_task1")]
 public static Task test_task1 (FawRequest _req, FawResponse _res) {
     _res.write ("hello world");
     return Task.CompletedTask;
 }
 
-[WEBMethod.PUT ("test test_task2")]
+[HTTP.PUT ("test test_task2")]
 public static async Task test_task2 (FawRequest _req, FawResponse _res) {
     _res.write ("hello world");
 }
 
-[WEBMethod.POST ("test test_task3")]
+[HTTP.POST ("test test_task3")]
 public static Task<string> test_task3 () {
     return Task.FromResult ("hello world");
 }
 
-[WEBMethod.DELETE ("test test_task4")]
+[HTTP.DELETE ("test test_task4")]
 public static async Task<string> test_task4 () {
     return "hello world";
 }
+```
+
+### Custom structure
+
+Custom structures currently only support json serialization. Examples are as follows:
+
+```csharp
+public struct test_struct {
+    public string name;
+    public int age;
+}
+
+// ...
+
+[HTTP ("test struct")]
+public static test_struct test_struct (test_struct val) {
+    return new test_struct () { name = val.name, age = val.age + 1 };
+}
+```
+
+Invoke method (of course, parameters can be passed by post, here through GET to facilitate the browser to directly test the call):
+
+<http://127.0.0.1:1234/api/Hello/test_struct?val={%22name%22:%22kangkang%22,%22age%22:18}>
+
+Return to the result:
+
+```json
+{"result":"success","content":{"name":"kangkang","age":19}}
 ```
