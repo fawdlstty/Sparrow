@@ -276,75 +276,80 @@ namespace SparrowServer {
 				}
 			};
 
-			// 返回数据
+			// 请求数据
 			var post_param = new Dictionary<string, string> ();
 			var post_file = new Dictionary<string, (string, byte [])> ();
 			try {
 				if (req.HttpMethod != "POST") {
 					return (post_param, post_file);
-				} else if (left_is (req.ContentType, "multipart/form-data;")) {
-					Encoding encoding = req.ContentEncoding;
-					string [] values = req.ContentType.Split (';').Skip (1).ToArray ();
-					string boundary = string.Join (";", values).Replace ("boundary=", "").Trim ();
-					byte [] bytes_boundary = encoding.GetBytes ($"--{boundary}\r\n");
-					byte [] bytes_end_boundary = encoding.GetBytes ($"--{boundary}--\r\n");
-					Stream SourceStream = req.InputStream;
-					var bytes = _read_bytes_line (SourceStream);
-					if (bytes == bytes_end_boundary) {
-						return (post_param, post_file);
-					} else if (!compare (bytes, bytes_boundary)) {
-						Log.show_info ("Parse Error in [first read is not bytes_boundary]");
-						return (post_param, post_file);
-					}
-					while (true) {
-						bytes = _read_bytes_line (SourceStream);
-						string _tmp = encoding.GetString (bytes);//Content-Disposition: form-data; name="text_"
-						if (!left_is (_tmp, "Content-Disposition:")) {
-							Log.show_info ("Parse Error in [begin block is not Content-Disposition]");
-							return (post_param, post_file);
-						}
-						string name = substr_mid (_tmp, "name=\"", "\"");
-						string filename = substr_mid (_tmp, "filename=\"", "\"");
-						do {
-							bytes = _read_bytes_line (SourceStream);
-						} while (bytes [0] != 13 || bytes [1] != 10);
-						bytes = _read_bytes_line (SourceStream);
-						using (var ms = new MemoryStream ()) {
-							while (!compare (bytes, bytes_boundary) && !compare (bytes, bytes_end_boundary)) {
-								ms.Write (bytes, 0, bytes.Length);
-								if (ms.Length > 5 * 1024 * 1024)
-									throw new Exception ("The uploading of files exceeding 5M is not currently supported / 暂不支持超过5M的文件的上传");
-								bytes = _read_bytes_line (SourceStream);
-							}
-							if (ms.Length < 2) {
-								Log.show_info ("Parse Error in [ms.Length < 2]");
-								return (post_param, post_file);
-							}
-							bytes = new byte [ms.Length - 2];
-							if (bytes.Length > 2) {
-								ms.Position = 0;
-								ms.Read (bytes, 0, bytes.Length);
-							}
-							if (string.IsNullOrEmpty (filename)) {
-								post_param [name] = encoding.GetString (bytes);
-							} else {
-								post_file [name] = (filename, bytes);
-							}
-						}
-					}
 				} else {
-					using (StreamReader sr = new StreamReader (req.InputStream, Encoding.UTF8)) {
-						string post_data = sr.ReadToEnd ();
-						if (post_data [0] == '{') {
-							JObject obj = JObject.Parse (post_data);
-							foreach (var (key, val) in obj)
-								post_param [HttpUtility.UrlDecode (key)] = HttpUtility.UrlDecode (val.ToString ());
-						} else {
-							string [] pairs = post_data.Split (new char [] { '&' }, StringSplitOptions.RemoveEmptyEntries);
-							foreach (string pair in pairs) {
-								int p = pair.IndexOf ('=');
-								if (p > 0)
-									post_param [HttpUtility.UrlDecode (pair.Substring (0, p))] = HttpUtility.UrlDecode (pair.Substring (p + 1));
+					var _encoding = req.Headers ["Content-Encoding"];
+					using (req.InputStream) {
+						using (var _stream = (_encoding == "gzip" ? new GZipStream (req.InputStream, CompressionMode.Compress) : (_encoding == "deflate" ? new DeflateStream (req.InputStream, CompressionMode.Compress) : req.InputStream))) {
+							if (left_is (req.ContentType, "multipart/form-data;")) {
+								string [] values = req.ContentType.Split (';').Skip (1).ToArray ();
+								string boundary = string.Join (";", values).Replace ("boundary=", "").Trim ();
+								byte [] bytes_boundary = Encoding.UTF8.GetBytes ($"--{boundary}\r\n");
+								byte [] bytes_end_boundary = Encoding.UTF8.GetBytes ($"--{boundary}--\r\n");
+								var bytes = _read_bytes_line (_stream);
+								if (bytes == bytes_end_boundary) {
+									return (post_param, post_file);
+								} else if (!compare (bytes, bytes_boundary)) {
+									Log.show_info ("Parse Error in [first read is not bytes_boundary]");
+									return (post_param, post_file);
+								}
+								while (true) {
+									bytes = _read_bytes_line (_stream);
+									string _tmp = Encoding.UTF8.GetString (bytes);//Content-Disposition: form-data; name="text_"
+									if (!left_is (_tmp, "Content-Disposition:")) {
+										Log.show_info ("Parse Error in [begin block is not Content-Disposition]");
+										return (post_param, post_file);
+									}
+									string name = substr_mid (_tmp, "name=\"", "\"");
+									string filename = substr_mid (_tmp, "filename=\"", "\"");
+									do {
+										bytes = _read_bytes_line (_stream);
+									} while (bytes [0] != 13 || bytes [1] != 10);
+									bytes = _read_bytes_line (_stream);
+									using (var ms = new MemoryStream ()) {
+										while (!compare (bytes, bytes_boundary) && !compare (bytes, bytes_end_boundary)) {
+											ms.Write (bytes, 0, bytes.Length);
+											if (ms.Length > 5 * 1024 * 1024)
+												throw new Exception ("The uploading of files exceeding 5M is not currently supported / 暂不支持超过5M的文件的上传");
+											bytes = _read_bytes_line (_stream);
+										}
+										if (ms.Length < 2) {
+											Log.show_info ("Parse Error in [ms.Length < 2]");
+											return (post_param, post_file);
+										}
+										bytes = new byte [ms.Length - 2];
+										if (bytes.Length > 2) {
+											ms.Position = 0;
+											ms.Read (bytes, 0, bytes.Length);
+										}
+										if (string.IsNullOrEmpty (filename)) {
+											post_param [name] = Encoding.UTF8.GetString (bytes);
+										} else {
+											post_file [name] = (filename, bytes);
+										}
+									}
+								}
+							} else {
+								using (StreamReader sr = new StreamReader (_stream, Encoding.UTF8)) {
+									string post_data = sr.ReadToEnd ();
+									if (post_data [0] == '{') {
+										JObject obj = JObject.Parse (post_data);
+										foreach (var (key, val) in obj)
+											post_param [HttpUtility.UrlDecode (key)] = HttpUtility.UrlDecode (val.ToString ());
+									} else {
+										string [] pairs = post_data.Split (new char [] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+										foreach (string pair in pairs) {
+											int p = pair.IndexOf ('=');
+											if (p > 0)
+												post_param [HttpUtility.UrlDecode (pair.Substring (0, p))] = HttpUtility.UrlDecode (pair.Substring (p + 1));
+										}
+									}
+								}
 							}
 						}
 					}
