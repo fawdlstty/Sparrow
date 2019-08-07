@@ -105,7 +105,7 @@ namespace SparrowServer {
 							}
 							if (!_proc)
 								throw new Exception ("Unknown request / 未知请求");
-						} else if (_req.m_path.left_is ("/swagger/")) {
+						} else if (_req.m_path.left_is ("/swagger/") && m_doc_info != null) {
 							if (_req.m_path == "/swagger/api.json") {
 								_res.write (m_swagger_data);
 								_res.set_content_from_filename (_req.m_path);

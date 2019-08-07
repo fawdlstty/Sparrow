@@ -86,9 +86,31 @@ namespace SparrowServer {
 		// 对象转长整型
 		public static long to_long (this object o) {
 			try {
-				if (o is string s) {
-					if (s.right (1) == "%")
-						return s.left (s.Length - 1).to_long () / 100;
+				if (o is double d) {
+					return (long) (d + 0.50000001);
+				} else if (o is float f) {
+					return (long) (f + 0.50000001);
+				} else if (o is string s) {
+					if (s.right_is_nocase ("b"))
+						s = s.left (s.Length - 1);
+					switch (s.right (1).ToLower ()) {
+						case "%":
+							return (s.left (s.Length - 1).to_double () / 100).to_long ();
+						case "k":
+							return (s.left (s.Length - 1).to_double () * 1024).to_long ();
+						case "m":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024).to_long ();
+						case "g":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024).to_long ();
+						case "t":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024).to_long ();
+						case "p":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024).to_long ();
+						case "e":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024).to_long ();
+						case "b":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024).to_long ();
+					}
 				}
 				return Convert.ToInt64 (o);
 			} catch (Exception) {
@@ -97,11 +119,25 @@ namespace SparrowServer {
 		}
 
 		// 对象转整型
-		public static Int32 to_int (this object o) {
+		public static int to_int (this object o) {
 			try {
-				if (o is string s) {
-					if (s.right (1) == "%")
-						return s.left (s.Length - 1).to_int () / 100;
+				if (o is double d) {
+					return (int) (d + 0.50000001);
+				} else if (o is float f) {
+					return (int) (f + 0.50000001);
+				} else if (o is string s) {
+					if (s.right_is_nocase ("b"))
+						s = s.left (s.Length - 1);
+					switch (s.right (1)) {
+						case "%":
+							return (s.left (s.Length - 1).to_double () / 100).to_int ();
+						case "k":
+							return (s.left (s.Length - 1).to_double () * 1024).to_int ();
+						case "m":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024).to_int ();
+						case "g":
+							return (s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024).to_int ();
+					}
 				}
 				return Convert.ToInt32 (o);
 			} catch (Exception) {
@@ -126,8 +162,26 @@ namespace SparrowServer {
 		public static double to_double (this object o) {
 			try {
 				if (o is string s) {
-					if (s.right (1) == "%")
-						return s.left (s.Length - 1).to_double () / 100;
+					if (s.right_is_nocase ("b"))
+						s = s.left (s.Length - 1);
+					switch (s.right (1).ToLower ()) {
+						case "%":
+							return s.left (s.Length - 1).to_double () / 100;
+						case "k":
+							return s.left (s.Length - 1).to_double () * 1024;
+						case "m":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024;
+						case "g":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024;
+						case "t":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024;
+						case "p":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024;
+						case "e":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
+						case "b":
+							return s.left (s.Length - 1).to_double () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
+					}
 				}
 				return Convert.ToDouble (o);
 			} catch (Exception) {

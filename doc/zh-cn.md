@@ -116,7 +116,7 @@ public static string test_context1 ([ReqParam.IP] string ip, [ReqParam.AgentIP] 
 
 ### 返回值的类型
 
-返回值在参数中没有 `FawResponse` 的情况下有效。当返回 `byte` 类型或 `byte []` 类型时，返回内容将不做处理，直接返回给调用者；如果返回其他类型比如 `int`、`string` 等类型时，将会经过json包装；另外不论返回值类型，直接抛出异常后，也会返回经过json包装的错误提示内容。由于异常处理在C#中非常低效，实际测试将会使得QPS达到非常低的地步，所以建议在所有函数处理均加上 `try...catch` ，避免异常传递。
+返回值在参数中没有 `FawResponse` 的情况下有效。当返回 `byte` 类型或 `byte []` 类型时，返回内容将不做处理，直接返回给调用者；如果返回其他类型比如 `int`、`string` 等类型时，将会经过json包装；另外不论返回值类型，直接抛出异常后，也会返回经过json包装的错误提示内容。
 
 ### 任务模式
 

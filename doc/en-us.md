@@ -116,7 +116,7 @@ The two parameters of the 'test_context1' method have ReqParam attributes, respe
 
 ### Type of return value
 
-The return value is valid without 'FawResponse' in the parameter.When 'byte' or 'byte []' type is returned, the returned content will not be processed and will be returned directly to the caller.If you return other types, such as' int ', 'string', etc., it will go through json wrapping;Regardless of the return value type, throwing an exception directly returns a json-wrapped error prompt.Since exception handling is very inefficient in C#, the actual testing will result in very low QPS, so it is recommended to add 'try...Catch' to all function handling to avoid exception passing.
+The return value is valid without 'FawResponse' in the parameter.When 'byte' or 'byte []' type is returned, the returned content will not be processed and will be returned directly to the caller.If you return other types, such as' int ', 'string', etc., it will go through json wrapping;Regardless of the return value type, throwing an exception directly returns a json-wrapped error prompt.
 
 ### Task returns
 
