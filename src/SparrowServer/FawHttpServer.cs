@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using SparrowServer.Monitor;
 
 namespace SparrowServer {
 	public class FawHttpServer {
@@ -55,6 +56,12 @@ namespace SparrowServer {
 
 		public void set_doc_info (WEBDocInfo doc_info) {
 			m_doc_info = doc_info;
+		}
+
+		public void enable_monitor (bool _enable = true) {
+			if (_enable != (m_monitor != null)) {
+				m_monitor = (_enable ? new MonitoringManager () : null);
+			}
 		}
 
 		// 处理一次请求
@@ -120,6 +127,11 @@ namespace SparrowServer {
 									_res.set_content_from_filename (_asm_path);
 								}
 							}
+						} else if (_req.m_path.left_is ("/monitor/") && m_monitor != null) {
+							if (_req.m_path == "/monitor/data.json") {
+								_res.write (m_monitor.get_json ().Result);
+								_res.set_content_from_filename (_req.m_path);
+							}
 						} else if (_req.m_method == "GET") {
 							bool _is_404 = (_req.m_path == "/404.html");
 							if (_is_404) {
@@ -180,18 +192,14 @@ namespace SparrowServer {
 					// 使用 gzip 压缩
 					_unique_add_header ("Content-Encoding", "gzip");
 					_unique_add_header ("Vary", "Accept-Encoding");
-					using (GZipStream gzip = new GZipStream (res.OutputStream, CompressionMode.Compress))
-						gzip.Write (result_data, 0, result_data.Length);
+					result_data = result_data.gzip_compress ();
 				} else if (Array.IndexOf (encodings, "deflate") >= 0) {
 					// 使用 deflate 压缩
 					_unique_add_header ("Content-Encoding", "deflate");
 					_unique_add_header ("Vary", "Accept-Encoding");
-					using (DeflateStream deflate = new DeflateStream (res.OutputStream, CompressionMode.Compress))
-						deflate.Write (result_data, 0, result_data.Length);
-				} else {
-					// 不使用压缩
-					res.OutputStream.Write (result_data, 0, result_data.Length);
+					result_data = result_data.deflate_compress ();
 				}
+				res.OutputStream.Write (result_data, 0, result_data.Length);
 			} catch (Exception ex) {
 				Log.show_error (ex);
 			} finally {
@@ -201,7 +209,6 @@ namespace SparrowServer {
 
 		// 循环请求
 		public void run () {
-
 			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info) : null);
 			foreach (var _module in m_assembly.GetTypes ()) {
 				var _module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
@@ -233,6 +240,7 @@ namespace SparrowServer {
 			}
 			m_swagger_data = _builder?.build ().to_bytes ();
 			//
+			//
 			new Thread (() => {
 				while (true) {
 					Thread.Sleep (10000);
@@ -255,27 +263,10 @@ namespace SparrowServer {
 		private string m_wwwroot = "";
 		private HttpListener m_listener = null;
 		private byte [] m_swagger_data = null;
+		private MonitoringManager m_monitor = null;
 
 		// 解析HTTP请求参数
 		private static (Dictionary<string, string>, Dictionary<string, (string, byte [])>) parse_form (HttpListenerRequest req) {
-			// 从流中读取一行字节数组
-			Func<Stream, byte []> _read_bytes_line = (_stm) => {
-				using (var resultStream = new MemoryStream ()) {
-					byte last_byte = 0;
-					while (true) {
-						int data = _stm.ReadByte ();
-						resultStream.WriteByte ((byte) data);
-						if (data == 10 && last_byte == 13)
-							break;
-						last_byte = (byte) data;
-					}
-					resultStream.Position = 0;
-					byte [] dataBytes = new byte [resultStream.Length];
-					resultStream.Read (dataBytes, 0, dataBytes.Length);
-					return dataBytes;
-				}
-			};
-
 			// 请求数据
 			var post_param = new Dictionary<string, string> ();
 			var post_file = new Dictionary<string, (string, byte [])> ();
@@ -284,72 +275,79 @@ namespace SparrowServer {
 					return (post_param, post_file);
 				} else {
 					var _encoding = req.Headers ["Content-Encoding"];
+					var _content_data = new List<byte> ();
 					using (req.InputStream) {
-						using (var _stream = (_encoding == "gzip" ? new GZipStream (req.InputStream, CompressionMode.Compress) : (_encoding == "deflate" ? new DeflateStream (req.InputStream, CompressionMode.Compress) : req.InputStream))) {
-							if (left_is (req.ContentType, "multipart/form-data;")) {
-								string [] values = req.ContentType.Split (';').Skip (1).ToArray ();
-								string boundary = string.Join (";", values).Replace ("boundary=", "").Trim ();
-								byte [] bytes_boundary = Encoding.UTF8.GetBytes ($"--{boundary}\r\n");
-								byte [] bytes_end_boundary = Encoding.UTF8.GetBytes ($"--{boundary}--\r\n");
-								var bytes = _read_bytes_line (_stream);
-								if (bytes == bytes_end_boundary) {
-									return (post_param, post_file);
-								} else if (!compare (bytes, bytes_boundary)) {
-									Log.show_info ("Parse Error in [first read is not bytes_boundary]");
-									return (post_param, post_file);
-								}
-								while (true) {
-									bytes = _read_bytes_line (_stream);
-									string _tmp = Encoding.UTF8.GetString (bytes);//Content-Disposition: form-data; name="text_"
-									if (!left_is (_tmp, "Content-Disposition:")) {
-										Log.show_info ("Parse Error in [begin block is not Content-Disposition]");
-										return (post_param, post_file);
-									}
-									string name = substr_mid (_tmp, "name=\"", "\"");
-									string filename = substr_mid (_tmp, "filename=\"", "\"");
-									do {
-										bytes = _read_bytes_line (_stream);
-									} while (bytes [0] != 13 || bytes [1] != 10);
-									bytes = _read_bytes_line (_stream);
-									using (var ms = new MemoryStream ()) {
-										while (!compare (bytes, bytes_boundary) && !compare (bytes, bytes_end_boundary)) {
-											ms.Write (bytes, 0, bytes.Length);
-											if (ms.Length > 5 * 1024 * 1024)
-												throw new Exception ("The uploading of files exceeding 5M is not currently supported / 暂不支持超过5M的文件的上传");
-											bytes = _read_bytes_line (_stream);
-										}
-										if (ms.Length < 2) {
-											Log.show_info ("Parse Error in [ms.Length < 2]");
-											return (post_param, post_file);
-										}
-										bytes = new byte [ms.Length - 2];
-										if (bytes.Length > 2) {
-											ms.Position = 0;
-											ms.Read (bytes, 0, bytes.Length);
-										}
-										if (string.IsNullOrEmpty (filename)) {
-											post_param [name] = Encoding.UTF8.GetString (bytes);
-										} else {
-											post_file [name] = (filename, bytes);
-										}
-									}
-								}
+						while (_content_data.Count < 5 * 1024 * 1024) {
+							int _byte = req.InputStream.ReadByte ();
+							if (_byte == -1)
+								break;
+							_content_data.Add ((byte) _byte);
+						}
+					}
+					if (_content_data.Count >= 5 * 1024 * 1024)
+						throw new Exception ("The uploading of files exceeding 5M is not currently supported");
+					if (_encoding == "gzip") {
+						_content_data = _content_data.gzip_decompress (5 * 1024 * 1024);
+					} else if (_encoding == "deflate") {
+						_content_data = _content_data.deflate_decompress (5 * 1024 * 1024);
+					}
+					if (req.ContentType.left_is ("multipart/form-data;")) {
+						string [] values = req.ContentType.Split (';').Skip (1).ToArray ();
+						string boundary = string.Join (";", values).Replace ("boundary=", "").Trim ();
+						byte [] bytes_boundary = Encoding.UTF8.GetBytes ($"--{boundary}");
+						//
+						if (!_left_is (_content_data, bytes_boundary))
+							throw new Exception ("Parse Error in [first read is not bytes_boundary]");
+						_content_data.RemoveRange (0, bytes_boundary.Length);
+						//
+						byte [] _end_line, _end_line2;
+						if (_left_is (_content_data, "\r\n".to_bytes ())) {
+							_end_line = "\r\n".to_bytes ();
+							_end_line2 = "\r\n\r\n".to_bytes ();
+						} else if (_left_is (_content_data, "\n".to_bytes ())) {
+							_end_line = "\n".to_bytes ();
+							_end_line2 = "\n\n".to_bytes ();
+						} else if (_left_is (_content_data, "--".to_bytes ())) {
+							return (post_param, post_file);
+						} else {
+							throw new Exception ("Parse Error in [No newline character is recognized]");
+						}
+						while (true) {
+							if (_content_data.Count < 5 || _left_is (_content_data, "--".to_bytes ()))
+								return (post_param, post_file);
+							_content_data.RemoveRange (0, _end_line.Length);
+							int _p = _find (_content_data, _end_line);
+							string _tmp = _left (_content_data, _p).to_str ();
+							if (!_tmp.left_is_nocase ("Content-Disposition:"))
+								throw new Exception ("Parse Error in [begin block is not Content-Disposition]");
+							string _name = _tmp.mid ("name=\"", "\"");
+							string _filename = _tmp.mid ("filename=\"", "\"");
+							if ((_p = _find (_content_data, _end_line2)) < 0)
+								throw new Exception ("Parse Error in [do not find value in block]");
+							_content_data.RemoveRange (0, _p + _end_line2.Length);
+							_p = _find (_content_data, bytes_boundary);
+							if (_p - _end_line.Length < 0)
+								throw new Exception ("Parse Error in [end block is not Content-Disposition]");
+							byte [] _value = _left (_content_data, _p - _end_line.Length);
+							_content_data.RemoveRange (0, _p + bytes_boundary.Length);
+							if (_filename.is_null ()) {
+								post_param [_name] = Encoding.UTF8.GetString (_value);
 							} else {
-								using (StreamReader sr = new StreamReader (_stream, Encoding.UTF8)) {
-									string post_data = sr.ReadToEnd ();
-									if (post_data [0] == '{') {
-										JObject obj = JObject.Parse (post_data);
-										foreach (var (key, val) in obj)
-											post_param [HttpUtility.UrlDecode (key)] = HttpUtility.UrlDecode (val.ToString ());
-									} else {
-										string [] pairs = post_data.Split (new char [] { '&' }, StringSplitOptions.RemoveEmptyEntries);
-										foreach (string pair in pairs) {
-											int p = pair.IndexOf ('=');
-											if (p > 0)
-												post_param [HttpUtility.UrlDecode (pair.Substring (0, p))] = HttpUtility.UrlDecode (pair.Substring (p + 1));
-										}
-									}
-								}
+								post_file [_name] = (_filename, _value);
+							}
+						}
+					} else {
+						string post_data = _content_data.to_str ();
+						if (post_data [0] == '{') {
+							JObject obj = JObject.Parse (post_data);
+							foreach (var (key, val) in obj)
+								post_param [HttpUtility.UrlDecode (key)] = HttpUtility.UrlDecode (val.ToString ());
+						} else {
+							string [] pairs = post_data.Split (new char [] { '&' }, StringSplitOptions.RemoveEmptyEntries);
+							foreach (string pair in pairs) {
+								int p = pair.IndexOf ('=');
+								if (p > 0)
+									post_param [HttpUtility.UrlDecode (pair.Substring (0, p))] = HttpUtility.UrlDecode (pair.Substring (p + 1));
 							}
 						}
 					}
@@ -360,41 +358,37 @@ namespace SparrowServer {
 			return (post_param, post_file);
 		}
 
-		private static bool compare (byte [] arr1, byte [] arr2) {
-			if (arr1 == null && arr2 == null)
-				return true;
-			else if (arr1 == null || arr2 == null)
+		// 判断字符数组是否以什么开始
+		public static bool _left_is (List<byte> l, byte [] a) {
+			if (l.Count < a.Length)
 				return false;
-			else if (arr1.Length != arr2.Length)
-				return false;
-			for (int i = 0; i < arr1.Length; ++i) {
-				if (arr1 [i] != arr2 [i])
+			for (int i = 0; i < a.Length; ++i) {
+				if (l [i] != a [i])
 					return false;
 			}
 			return true;
 		}
 
-		private static bool left_is (string s, string s2) {
-			if (string.IsNullOrEmpty (s))
-				return string.IsNullOrEmpty (s2);
-			if (s.Length < s2.Length)
-				return false;
-			return s.Substring (0, s2.Length) == s2;
+		// 从字符数组中截取字符串
+		public static byte [] _left (List<byte> l, int n) {
+			var _arr = new byte [Math.Min (n, l.Count)];
+			for (int i = 0; i < _arr.Length; ++i)
+				_arr [i] = l [i];
+			return _arr;
 		}
 
-		private static string substr_mid (string s, string begin, string end = "") {
-			if (string.IsNullOrEmpty (s) || string.IsNullOrEmpty (begin))
-				return "";
-			int p = s.IndexOf (begin);
-			if (p == -1)
-				return "";
-			s = s.Substring (p + begin.Length);
-			if (!string.IsNullOrEmpty (end)) {
-				p = s.IndexOf (end);
-				if (p >= 0)
-					s = s.Substring (0, p);
+		// 从字符数组中寻找目标字符集
+		public static int _find (List<byte> l, byte [] a) {
+			for (int i = 0; i < l.Count - a.Length + 1; ++i) {
+				int j = 0;
+				for (; j < a.Length; ++j) {
+					if (l [i + j] != a [j])
+						break;
+				}
+				if (j == a.Length)
+					return i;
 			}
-			return s;
+			return -1;
 		}
 
 		private static byte [] get_failure_res (string content) {

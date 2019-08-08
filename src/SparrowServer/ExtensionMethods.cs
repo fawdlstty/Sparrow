@@ -45,6 +45,8 @@ namespace SparrowServer {
                 return dt.ToString ("yyyy-MM-dd HH:mm:ss");
             } else if (o is byte [] b) {
                 return Encoding.UTF8.GetString (b);
+            } else if (o is List<byte> l) {
+                return Encoding.UTF8.GetString (l.ToArray ());
             } else if (o is float f) {
 				return (f + 0.000001).ToString ("0.00");
             } else if (o is double d) {
@@ -387,18 +389,108 @@ namespace SparrowServer {
 				return ms.ToArray ();
 			}
 		}
+		public static List<byte> gzip_compress (this List<byte> data) {
+			return data.ToArray ().gzip_compress ().ToList ();
+		}
 
 		// gzip解压数据
-		public static byte [] gzip_decompress (this byte [] data) {
+		public static byte [] gzip_decompress (this byte [] data, int _max_len = -1) {
 			using (MemoryStream ms = new MemoryStream (data)) {
 				using (GZipStream gzip = new GZipStream (ms, CompressionMode.Decompress)) {
 					using (MemoryStream ms2 = new MemoryStream ()) {
 						data = new byte [1024];
 						int nRead;
-						while ((nRead = gzip.Read (data, 0, data.Length)) > 0)
+						while ((nRead = gzip.Read (data, 0, data.Length)) > 0) {
+							if (_max_len >= 0) {
+								if (_max_len < 1024)
+									throw new Exception ("Decompress out of range");
+								_max_len -= 1024;
+							}
 							ms2.Write (data, 0, nRead);
+						}
 						return ms2.ToArray ();
 					}
+				}
+			}
+		}
+		public static List<byte> gzip_decompress (this List<byte> data, int _max_len = -1) {
+			//return data.ToArray ().gzip_decompress (_max_len).ToList ();
+			using (MemoryStream ms = new MemoryStream (data.ToArray ())) {
+				using (GZipStream gzip = new GZipStream (ms, CompressionMode.Decompress)) {
+					data = new List<byte> ();
+					var _data_block = new byte [1024];
+					int nRead;
+					while ((nRead = gzip.Read (_data_block, 0, _data_block.Length)) > 0) {
+						if (_max_len >= 0) {
+							if (_max_len < 1024)
+								throw new Exception ("Decompress out of range");
+							_max_len -= 1024;
+						}
+						data.AddRange (_data_block);
+					}
+					return data;
+				}
+			}
+		}
+
+		// deflate压缩数据
+		public static byte [] deflate_compress (this byte [] data) {
+			using (MemoryStream ms = new MemoryStream ()) {
+				using (DeflateStream deflate = new DeflateStream (ms, CompressionMode.Compress))
+					deflate.Write (data, 0, data.Length);
+				return ms.ToArray ();
+			}
+		}
+		public static List<byte> deflate_compress (this List<byte> data) {
+			using (MemoryStream ms = new MemoryStream (data.ToArray ())) {
+				using (DeflateStream gzip = new DeflateStream (ms, CompressionMode.Decompress)) {
+					var _list = new List<byte> ();
+					var _data_block = new byte [1024];
+					int nRead;
+					while ((nRead = gzip.Read (_data_block, 0, _data_block.Length)) > 0) {
+						_list.AddRange (_data_block);
+					}
+					return _list;
+				}
+			}
+		}
+
+		// gzip解压数据
+		public static byte [] deflate_decompress (this byte [] data, int _max_len = -1) {
+			using (MemoryStream ms = new MemoryStream (data)) {
+				using (DeflateStream deflate = new DeflateStream (ms, CompressionMode.Decompress)) {
+					using (MemoryStream ms2 = new MemoryStream ()) {
+						data = new byte [1024];
+						int nRead;
+						while ((nRead = deflate.Read (data, 0, data.Length)) > 0) {
+							if (_max_len >= 0) {
+								if (_max_len < 1024)
+									throw new Exception ("Decompress out of range");
+								_max_len -= 1024;
+							}
+							ms2.Write (data, 0, nRead);
+						}
+						return ms2.ToArray ();
+					}
+				}
+			}
+		}
+		public static List<byte> deflate_decompress (this List<byte> data, int _max_len = -1) {
+			//return data.ToArray ().deflate_decompress (_max_len).ToList ();
+			using (MemoryStream ms = new MemoryStream (data.ToArray ())) {
+				using (DeflateStream gzip = new DeflateStream (ms, CompressionMode.Decompress)) {
+					data = new List<byte> ();
+					var _data_block = new byte [1024];
+					int nRead;
+					while ((nRead = gzip.Read (_data_block, 0, _data_block.Length)) > 0) {
+						if (_max_len >= 0) {
+							if (_max_len < 1024)
+								throw new Exception ("Decompress out of range");
+							_max_len -= 1024;
+						}
+						data.AddRange (_data_block);
+					}
+					return data;
 				}
 			}
 		}

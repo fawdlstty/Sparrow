@@ -77,7 +77,7 @@ namespace SparrowServer.Monitor.ComputerState {
 					if (long.TryParse (new string (_mem_avail.Where (char.IsDigit).ToArray ()), out var _mem_avail_kb))
 						_mem_avail_byte = _mem_avail_kb * 1_000;
 				}
-				return (m_cur_process.PrivateMemorySize64, _mem_avail_byte, m_mem_total_byte);
+				return (m_cur_process.WorkingSet64, _mem_avail_byte, m_mem_total_byte);
 			}
 		}
 

@@ -51,7 +51,7 @@ namespace SparrowServer.Monitor.ComputerState {
 					if (m_mem_total_byte <= 0)
 						throw new Exception ("No physical ram installed on machine?");
 				}
-				return (m_cur_process.PrivateMemorySize64, m_mem_total_byte - m_mem_avail.NextValue ().to_long (), m_mem_total_byte);
+				return (m_cur_process.WorkingSet64, m_mem_total_byte - m_mem_avail.NextValue ().to_long (), m_mem_total_byte);
 			}
 		}
 
