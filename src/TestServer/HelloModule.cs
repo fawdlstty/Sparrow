@@ -35,6 +35,7 @@ namespace TestServer {
 		[HTTP.PUT ("test test_task2")]
 		public static async Task test_task2 (FawRequest _req, FawResponse _res) {
 			_res.write ("hello world");
+			await Task.CompletedTask;
 		}
 
 		[HTTP.POST ("test test_task3")]
@@ -44,7 +45,7 @@ namespace TestServer {
 
 		[HTTP.DELETE ("test test_task4")]
 		public static async Task<string> test_task4 () {
-			return "hello world";
+			return await Task.FromResult ("hello world");
 		}
 
 		[HTTP ("test struct")]

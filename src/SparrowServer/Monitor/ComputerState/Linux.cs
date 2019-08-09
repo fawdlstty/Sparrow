@@ -61,7 +61,7 @@ namespace SparrowServer.Monitor.ComputerState {
 		// 获取当前进程占用内存、内存总使用率及内存总空间
 		private long m_mem_total_byte = 0;
 
-		public (long, long, long) MemUsage {
+		public long MemCount {
 			get {
 				if (m_mem_total_byte <= 0) {
 					var _mem_total = _ReadLineWithStartingAsync ("/proc/meminfo", "MemTotal").Result;
@@ -71,13 +71,18 @@ namespace SparrowServer.Monitor.ComputerState {
 							m_mem_total_byte = _mem_total_kb * 1_000;
 					}
 				}
+				return m_mem_total_byte;
+			}
+		}
+		public (long, long) MemUsage {
+			get {
 				var _mem_avail = _ReadLineWithStartingAsync ("/proc/meminfo", "MemAvailable").Result;
 				long _mem_avail_byte = 0;
 				if (!string.IsNullOrWhiteSpace (_mem_avail)) {
 					if (long.TryParse (new string (_mem_avail.Where (char.IsDigit).ToArray ()), out var _mem_avail_kb))
 						_mem_avail_byte = _mem_avail_kb * 1_000;
 				}
-				return (m_cur_process.WorkingSet64, _mem_avail_byte, m_mem_total_byte);
+				return (m_cur_process.WorkingSet64, m_mem_total_byte - _mem_avail_byte);
 			}
 		}
 

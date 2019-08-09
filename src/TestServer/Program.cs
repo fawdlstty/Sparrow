@@ -7,16 +7,16 @@ using System.Reflection;
 namespace TestServer {
 	class Program {
 		static void Main (string [] args) {
-//			string _ss = @"Filesystem      Size  Used Avail Use% Mounted on
-///dev/vda1        50G  1.6G   46G   4% /
-//devtmpfs        487M     0  487M   0% /dev
-//tmpfs           497M   24K  497M   1% /dev/shm
-//tmpfs           497M  280K  497M   1% /run
-//tmpfs           497M     0  497M   0% /sys/fs/cgroup
-//tmpfs           100M     0  100M   0% /run/user/0";
-//			var _size_line = (from p in _ss.split (true, '\r', '\n') where p.right_is (" /") select p.split (true, ' ')).First ();
-//			var _total_use = _size_line [2].to_long ();
-//			var _total = _size_line [1].to_long ();
+			//			string _ss = @"Filesystem      Size  Used Avail Use% Mounted on
+			///dev/vda1        50G  1.6G   46G   4% /
+			//devtmpfs        487M     0  487M   0% /dev
+			//tmpfs           497M   24K  497M   1% /dev/shm
+			//tmpfs           497M  280K  497M   1% /run
+			//tmpfs           497M     0  497M   0% /sys/fs/cgroup
+			//tmpfs           100M     0  100M   0% /run/user/0";
+			//			var _size_line = (from p in _ss.split (true, '\r', '\n') where p.right_is (" /") select p.split (true, ' ')).First ();
+			//			var _total_use = _size_line [2].to_long ();
+			//			var _total = _size_line [1].to_long ();
 
 			FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), 1234);
 			_sss.set_doc_info (new WEBDocInfo {

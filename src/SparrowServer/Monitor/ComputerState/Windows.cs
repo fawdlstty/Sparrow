@@ -41,7 +41,7 @@ namespace SparrowServer.Monitor.ComputerState {
 		private PerformanceCounter m_mem_avail = new PerformanceCounter ("Memory", "Available Bytes", true);
 		private long m_mem_total_byte = 0;
 
-		public (long, long, long) MemUsage {
+		public long MemCount {
 			get {
 				if (m_mem_total_byte <= 0) {
 					m_mem_total_byte = 0;
@@ -51,7 +51,12 @@ namespace SparrowServer.Monitor.ComputerState {
 					if (m_mem_total_byte <= 0)
 						throw new Exception ("No physical ram installed on machine?");
 				}
-				return (m_cur_process.WorkingSet64, m_mem_total_byte - m_mem_avail.NextValue ().to_long (), m_mem_total_byte);
+				return m_mem_total_byte;
+			}
+		}
+		public (long, long) MemUsage {
+			get {
+				return (m_cur_process.WorkingSet64, m_mem_total_byte - m_mem_avail.NextValue ().to_long ());
 			}
 		}
 

@@ -100,8 +100,10 @@ namespace SparrowServer {
 				res.StatusCode = 200;
 				byte [] result_data = new byte [0];
 				if (_req.m_method != "HEAD") {
+					bool _static = true;
 					try {
 						if (_req.m_path.left_is ("/api/")) {
+							_static = false;
 							bool _proc = false;
 							if (m_request_handlers.ContainsKey ($"{_req.m_method} {_req.m_path}")) {
 								m_request_handlers [$"{_req.m_method} {_req.m_path}"].process (_req, _res);
@@ -129,8 +131,8 @@ namespace SparrowServer {
 							}
 						} else if (_req.m_path.left_is ("/monitor/") && m_monitor != null) {
 							if (_req.m_path == "/monitor/data.json") {
-								_res.write (m_monitor.get_json ().Result);
-								_res.set_content_from_filename (_req.m_path);
+								_res.write (m_monitor.get_json (_req.get_value<int> ("count", false)));
+								//_res.set_content_from_filename (_req.m_path);
 							}
 						} else if (_req.m_method == "GET") {
 							bool _is_404 = (_req.m_path == "/404.html");
@@ -154,12 +156,15 @@ namespace SparrowServer {
 						}
 						result_data = _res._get_writes ();
 						res.StatusCode = _res.m_status_code;
+						m_monitor?.OnRequest (_static);
 					} catch (KeyNotFoundException ex) {
 						result_data = get_failure_res ($"not given parameter {ex.Message.mid ("The given key '", "'")}");
 						res.StatusCode = 500;
+						m_monitor?.OnRequest (_static, true);
 					} catch (Exception ex) {
 						result_data = get_failure_res (ex.GetType ().Name == "Exception" ? ex.Message : ex.ToString ());
 						res.StatusCode = 500;
+						m_monitor?.OnRequest (_static, true);
 					}
 				}
 
