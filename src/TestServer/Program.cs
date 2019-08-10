@@ -1,4 +1,5 @@
-﻿using SparrowServer;
+﻿using Newtonsoft.Json.Linq;
+using SparrowServer;
 using SparrowServer.Monitor;
 using System;
 using System.Linq;
@@ -17,6 +18,9 @@ namespace TestServer {
 			//			var _size_line = (from p in _ss.split (true, '\r', '\n') where p.right_is (" /") select p.split (true, ' ')).First ();
 			//			var _total_use = _size_line [2].to_long ();
 			//			var _total = _size_line [1].to_long ();
+			//
+			//var m = JWTManager.Generate (new JObject { ["test"] = "aaaa" }, DateTime.Now.AddMinutes (2));
+			//var _o = JWTManager.Check (m);
 
 			FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), 1234);
 			_sss.set_doc_info (new WEBDocInfo {

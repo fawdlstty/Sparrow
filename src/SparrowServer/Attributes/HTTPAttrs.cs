@@ -10,6 +10,8 @@ namespace SparrowServer.Attributes {
 	}
 
 	// Method 方法
+	public class JWTGenAttribute : Attribute {}
+	public class JWTAuthAttribute : Attribute {}
 	public interface IHTTPMethod { string Type { get; } string Summary { get; } string Description { get; } }
 	public class HTTPAttribute : Attribute, IHTTPMethod {
 		public HTTPAttribute (string summary, string description = "") { Summary = summary; Description = description; }

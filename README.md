@@ -1,8 +1,10 @@
 # Sparrow
 
-Sparrow is a C# HTTP/REST/RPC Network Library, it can be very easy to act as an HTTP server or heterogeneous RPC service provider, the name is from "麻雀虽小，五脏俱全".
+## Description / 描述
 
-Sparrow（麻雀）是一个C#的 HTTP/REST/RPC 网络库，可以非常容易的作为HTTP服务器或异构RPC服务提供者，名称源于“麻雀虽小，五脏俱全”。
+Sparrow is a C# HTTP/REST/RPC Network Library, it can be very easy to act as an HTTP server or heterogeneous RPC service provider, Suitable for single server development (consider adding a master-slave later to ensure 100% availability of the service), the name is from "麻雀虽小，五脏俱全".
+
+Sparrow（麻雀）是一个C#的 HTTP/REST/RPC 网络库，可以非常容易的作为HTTP服务器或异构RPC服务提供者，适合用于开发单机型服务器（后期考虑加入主从，用来保证服务的100%可用性），名称源于“麻雀虽小，五脏俱全”。
 
 Usage / 用法：
 
@@ -50,6 +52,28 @@ Run the project at this point and the document will be generated automatically. 
 
 此时运行项目，文档将会自动生成，文档地址位于<http://127.0.0.1:1234/swagger/index.html>。
 
+## Document / 文档
+
 [English document](./doc/en-us.md)
 
 [中文文档](./doc/zh-cn.md)
+
+## Reference / 引用
+
+<https://github.com/swagger-api/swagger-ui>
+
+<https://github.com/JamesNK/Newtonsoft.Json>
+
+<https://github.com/jwt-dotnet/jwt>
+
+## TODO / 待完善
+
+监控请求耗时
+
+监控流量
+
+CSRF防御
+
+主机及程序运行监视页面（暂时考虑grafana、skywalking或自建）
+
+双机/三机主从（分布式，保证服务100%可用性）

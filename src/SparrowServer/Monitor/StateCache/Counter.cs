@@ -42,7 +42,7 @@ namespace SparrowServer.Monitor.StateCache {
 		public JObject get_values (int _count) {
 			_count = (_count < 1 ? m_values.Count : Math.Min (_count, m_values.Count));
 			lock (m_values)
-				return new { type = "counter", name = m_name, labels = m_labels, valus = m_values.Skip (m_values.Count - _count) }.json ();
+				return new { type = "counter", name = m_name, labels = m_labels, values = m_values.Skip (m_values.Count - _count) }.json ();
 		}
 
 		private string m_name;

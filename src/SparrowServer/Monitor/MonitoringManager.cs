@@ -1,6 +1,4 @@
-﻿using App.Metrics;
-using App.Metrics.Gauge;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -33,7 +31,9 @@ namespace SparrowServer.Monitor {
 		}
 
 		public void OnRequest (bool _static, bool _error = false) {
-			(_static ? m_static_request : m_method_request).Increment (_error ? 1 : 0);
+			(_static ? m_static_request : m_method_request).Increment (0);
+			if (_error)
+				(_static ? m_static_request : m_method_request).Increment (1);
 		}
 
 		public string get_json (int _count) {
