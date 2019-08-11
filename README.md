@@ -31,8 +31,10 @@ Sparrow会在模块中搜索所有可能的Web服务，生成文档时需要传�
 
 ```csharp
 static void Main (string [] args) {
-    FawHttpServer _sss = new FawHttpServer (1234);
-    _sss.set_doc_info (Assembly.GetExecutingAssembly (), new WEBDocInfo {
+    FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), 1234);
+    // Without calling this interface, the swagger document is not generated
+    // 如果没有调用这个接口，将不会生成swagger文档
+    _sss.set_doc_info (new WEBDocInfo {
         DocName = "Test interface documentation / 测试接口文档",
         Version = "0.0.1",
         Description = "This is a large document, and I have omitted 10,000 words here / 这个是很大篇的文档，此处省略10000字",
@@ -68,7 +70,9 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
-监控请求耗时
+JWT鉴权（JWTGen返回值的处理）
+
+数据检查
 
 监控流量
 

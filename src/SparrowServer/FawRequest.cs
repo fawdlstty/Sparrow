@@ -10,11 +10,12 @@ namespace SparrowServer {
 		public string m_method = "";
 		public string m_url = "";
 		public string m_path = "";
+		public Dictionary<string, string> m_headers = new Dictionary<string, string> ();
 		public Dictionary<string, string> m_gets = new Dictionary<string, string> ();
 		public Dictionary<string, string> m_posts = new Dictionary<string, string> ();
 		public Dictionary<string, (string, byte [])> m_files = new Dictionary<string, (string, byte [])> ();
 
-		// Data check / 数据检查
+		// Data check
 		public Func<string, int, bool, bool> _check_int { get; set; } = null;
 		public Func<string, long, bool, bool> _check_long { get; set; } = null;
 		public Func<string, string, bool, bool> _check_string { get; set; } = null;
@@ -27,16 +28,16 @@ namespace SparrowServer {
 			if (_type == typeof (int)) {
 				int _var_int = _var_str.to_int ();
 				if (_check_int != null && !_check_int (_varname, _var_int, _force_valid))
-					throw new Exception ($"Parameter {_varname} format error / 参数 {_varname} 格式错误");
+					throw new Exception ($"Parameter {_varname} format error");
 				return (object) _var_int;
 			} else if (_type == typeof (long)) {
 				var _var_long = _var_str.to_long ();
 				if (_check_int != null && !_check_long (_varname, _var_long, _force_valid))
-					throw new Exception ($"Parameter {_varname} format error / 参数 {_varname} 格式错误");
+					throw new Exception ($"Parameter {_varname} format error");
 				return (object) _var_long;
 			} else if (_type == typeof (string)) {
 				if (_check_string != null && !_check_string (_varname, _var_str, _force_valid))
-					throw new Exception ($"Parameter {_varname} format error / 参数 {_varname} 格式错误");
+					throw new Exception ($"Parameter {_varname} format error");
 				return (object) _var_str;
 			} else if (_type == typeof (bool)) {
 				return (object) _var_str.to_bool ();

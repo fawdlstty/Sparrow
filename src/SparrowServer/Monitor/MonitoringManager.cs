@@ -14,6 +14,7 @@ namespace SparrowServer.Monitor {
 		private StateCache.Guages<long>		m_mem;
 		private StateCache.Counter			m_static_request;
 		private StateCache.Counter			m_method_request;
+		private StateCache.Elapsed			m_Request_elapsed;
 
 		public MonitoringManager () {
 			m_cpu = new StateCache.Guages<double> ("CPU Usage", 0, 100, "Program Usage", "Total Usage");
@@ -28,12 +29,14 @@ namespace SparrowServer.Monitor {
 			});
 			m_static_request = new StateCache.Counter ("Static Request", "Total", "Error");
 			m_method_request = new StateCache.Counter ("Method Request", "Total", "Error");
+			m_Request_elapsed = new StateCache.Elapsed ("Elapsed", "Static", "Method");
 		}
 
-		public void OnRequest (bool _static, bool _error = false) {
+		public void OnRequest (bool _static, long _elapsed_ms, bool _error = false) {
 			(_static ? m_static_request : m_method_request).Increment (0);
 			if (_error)
 				(_static ? m_static_request : m_method_request).Increment (1);
+			m_Request_elapsed.add_value (_static ? 0 : 1, _elapsed_ms);
 		}
 
 		public string get_json (int _count) {
@@ -42,6 +45,7 @@ namespace SparrowServer.Monitor {
 			_o.Add (m_mem.get_values (_count));
 			_o.Add (m_static_request.get_values (_count));
 			_o.Add (m_method_request.get_values (_count));
+			_o.Add (m_Request_elapsed.get_values ());
 			return _o.to_json ();
 		}
 	}

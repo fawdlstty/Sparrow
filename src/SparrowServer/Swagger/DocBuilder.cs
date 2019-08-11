@@ -24,6 +24,7 @@ namespace SparrowServer.Swagger {
 		public string m_name;
 		public string m_type;
 		public string m_description;
+		public string m_in;
 	}
 
 	public class DocBuilder {
@@ -57,44 +58,63 @@ namespace SparrowServer.Swagger {
 
 		public void add_module (string _module_name, string _module_prefix, string _description) {
 			if (_module_name.is_null ())
-				throw new Exception ("Name format error / 名称格式错误");
+				throw new Exception ("Name format error");
 			if ((from p in m_modules where p.m_name == _module_name || p.m_prefix == _module_prefix select 1).Count () > 0)
-				throw new Exception ("Repeated addition of modules / 模块重复添加");
+				throw new Exception ("Repeated addition of modules");
 			m_modules.Add (new _DocModule { m_name = _module_name, m_prefix = _module_prefix, m_description = _description });
 		}
 
 		public void add_method (string _module_name, string _request_type, string _method_name, string _summary, string _description = "") {
 			if (_module_name.is_null () || _method_name.is_null ())
-				throw new Exception ("Name format error / 名称格式错误");
+				throw new Exception ("Name format error");
 			if (_description.is_null ())
 				_description = _summary;
 			for (int i = m_modules.Count - 1; i >= 0; --i) {
 				if (m_modules [i].m_name == _module_name) {
 					if ((from p in m_modules [i].m_methods where p.m_request_type == _request_type && p.m_name == _method_name select 1).Count () > 0)
-						throw new Exception ("Repeated addition of methods / 方法重复添加");
+						throw new Exception ("Repeated addition of methods");
 					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_summary = _summary, m_description = _description });
 					return;
 				}
 			}
-			throw new Exception ("Module is not added / 模块未添加");
+			throw new Exception ("Module is not added");
 		}
 
-		public void add_param (string _module_name, string _request_type, string _method_name, string _param_name, string _param_type, string _description = "") {
-			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
-				throw new Exception ("Name format error / 名称格式错误");
+		public void add_jwt_param (string _module_name, string _request_type, string _method_name) {
+			if (_module_name.is_null () || _method_name.is_null ())
+				throw new Exception ("Name format error");
+			string _param_name = "X-API-Key";
 			for (int i = m_modules.Count - 1; i >= 0; --i) {
 				if (m_modules [i].m_name == _module_name) {
 					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
 						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
 							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
-								throw new Exception ("Repeated addition of params / 参数重复添加");
-							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = _description });
+								throw new Exception ("Repeated addition of params");
+							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = "apiKey", m_description = "JWT API Key", m_in = "header" });
 							return;
 						}
 					}
 				}
 			}
-			throw new Exception ("Module or method is not added / 模块或方法未添加");
+			throw new Exception ("Module or method is not added");
+		}
+
+		public void add_param (string _module_name, string _request_type, string _method_name, string _param_name, string _param_type, string _description = "") {
+			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
+				throw new Exception ("Name format error");
+			for (int i = m_modules.Count - 1; i >= 0; --i) {
+				if (m_modules [i].m_name == _module_name) {
+					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
+						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
+							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
+								throw new Exception ("Repeated addition of params");
+							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = _description, m_in = (_request_type == "POST" ? "body" : "query") });
+							return;
+						}
+					}
+				}
+			}
+			throw new Exception ("Module or method is not added");
 		}
 
 		public string build () {
@@ -109,7 +129,7 @@ namespace SparrowServer.Swagger {
 					var _parameters = new JArray ();
 					foreach (var _param in _method.m_params) {
 						_parameters.Add (new JObject {
-							["in"] = "query",
+							["in"] = _param.m_in,
 							["name"] = _param.m_name,
 							["description"] = _param.m_description,
 							["required"] = true,

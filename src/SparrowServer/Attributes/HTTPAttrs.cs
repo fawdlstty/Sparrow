@@ -3,15 +3,13 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace SparrowServer.Attributes {
-	// Module / 模块
+	// Module
 	public class HTTPModuleAttribute : Attribute {
 		public HTTPModuleAttribute (string description) { m_description = description; }
 		public string m_description { get; private set; } = "";
 	}
 
-	// Method 方法
-	public class JWTGenAttribute : Attribute {}
-	public class JWTAuthAttribute : Attribute {}
+	// Method
 	public interface IHTTPMethod { string Type { get; } string Summary { get; } string Description { get; } }
 	public class HTTPAttribute : Attribute, IHTTPMethod {
 		public HTTPAttribute (string summary, string description = "") { Summary = summary; Description = description; }
@@ -46,7 +44,12 @@ namespace SparrowServer.Attributes {
 		}
 	}
 
-	// Parameter / 参数
+	// JWT
+	public interface IJWTMethod { string Type { get; } }
+	public class JWTGenAttribute: Attribute, IJWTMethod { public string Type { get { return "Gen"; } } }
+	public class JWTReconnectAttribute : Attribute, IJWTMethod { public string Type { get { return "Reconnect"; } } }
+
+	// Parameter
 	public interface IReqParam { string Name { get; } }
 	public class ReqParam {
 		public class IPAttribute : Attribute, IReqParam { public string Name { get { return ":IP"; } } }

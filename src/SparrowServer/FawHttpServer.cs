@@ -20,12 +20,12 @@ namespace SparrowServer {
 		private void add_handler (string path_prefix, RequestStruct _req_struct) {
 			foreach (var key in m_request_handlers.Keys) {
 				if (key == path_prefix) // key.left_is (path_prefix) || path_prefix.left_is (key)
-					throw new Exception ("Url request address prefix conflict / URL请求地址前缀冲突");
+					throw new Exception ("Url request address prefix conflict");
 			}
 			m_request_handlers.Add (path_prefix, _req_struct);
 		}
 
-		// 数据检查
+		// data check
 		public Func<string, int, bool, bool> m_check_int { get; set; } = null;
 		public Func<string, long, bool, bool> m_check_long { get; set; } = null;
 		public Func<string, string, bool, bool> m_check_string { get; set; } = null;
@@ -64,28 +64,24 @@ namespace SparrowServer {
 			}
 		}
 
-		// 处理一次请求
+		// processing a request
 		private void _request_once (HttpListenerContext ctx) {
+			var _request_begin = DateTime.Now;
+			bool _static = true, _error = false;
+
 			HttpListenerRequest req = ctx.Request;
 			HttpListenerResponse res = ctx.Response;
 
 			FawRequest _req = new FawRequest () { _check_int = m_check_int, _check_long = m_check_long, _check_string = m_check_string };
-			_req.m_url = req.RawUrl;// 此处缺失schema://domain:host
+			FawResponse _res = new FawResponse ();
+			_req.m_url = req.RawUrl; // this valus is lose schema://domain:host
 			_req.m_method = req.HttpMethod.ToUpper ();
-
-			// 获取请求命令
 			_req.m_path = req.RawUrl.simplify_path ();
 			int _p = _req.m_path.IndexOfAny (new char [] { '?', '#' });
 			if (_p > 0)
 				_req.m_path = _req.m_path.Substring (0, _p);
 
-			// 获取请求内容
-			foreach (string str_key in req.QueryString.AllKeys)
-				_req.m_gets.Add (str_key, req.QueryString [str_key]);
-			if (_req.m_method == "POST")
-				(_req.m_posts, _req.m_files) = parse_form (req);
-
-			// 获取请求者IP
+			// get ip and agent-ip
 			if ((req.Headers ["X-Real-IP"]?.Length ?? 0) > 0) {
 				_req.m_ip = req.Headers ["X-Real-IP"];
 				_req.m_agent_ip = req.UserHostAddress;
@@ -93,14 +89,19 @@ namespace SparrowServer {
 				_req.m_ip = req.UserHostAddress;
 			}
 
-			FawResponse _res = new FawResponse ();
+			// get request header/query/post parameters
+			foreach (var _key in req.Headers.AllKeys)
+				_req.m_headers.Add (_key, req.Headers [_key]);
+			foreach (string str_key in req.QueryString.AllKeys)
+				_req.m_gets.Add (str_key, req.QueryString [str_key]);
+			if (_req.m_method == "POST")
+				(_req.m_posts, _req.m_files) = parse_form (req);
 
 			try {
-				// 生成请求内容
+				// compare query header
 				res.StatusCode = 200;
 				byte [] result_data = new byte [0];
 				if (_req.m_method != "HEAD") {
-					bool _static = true;
 					try {
 						if (_req.m_path.left_is ("/api/")) {
 							_static = false;
@@ -113,7 +114,7 @@ namespace SparrowServer {
 								_proc = true;
 							}
 							if (!_proc)
-								throw new Exception ("Unknown request / 未知请求");
+								throw new Exception ("Unknown request");
 						} else if (_req.m_path.left_is ("/swagger/") && m_doc_info != null) {
 							if (_req.m_path == "/swagger/api.json") {
 								_res.write (m_swagger_data);
@@ -156,15 +157,14 @@ namespace SparrowServer {
 						}
 						result_data = _res._get_writes ();
 						res.StatusCode = _res.m_status_code;
-						m_monitor?.OnRequest (_static);
 					} catch (KeyNotFoundException ex) {
 						result_data = get_failure_res ($"not given parameter {ex.Message.mid ("The given key '", "'")}");
 						res.StatusCode = 500;
-						m_monitor?.OnRequest (_static, true);
+						_error = true;
 					} catch (Exception ex) {
 						result_data = get_failure_res (ex.GetType ().Name == "Exception" ? ex.Message : ex.ToString ());
 						res.StatusCode = 500;
-						m_monitor?.OnRequest (_static, true);
+						_error = true;
 					}
 				}
 
@@ -209,10 +209,11 @@ namespace SparrowServer {
 				Log.show_error (ex);
 			} finally {
 				res.Close ();
+				m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
 			}
 		}
 
-		// 循环请求
+		// loop processing
 		public void run () {
 			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info) : null);
 			foreach (var _module in m_assembly.GetTypes ()) {
@@ -221,30 +222,68 @@ namespace SparrowServer {
 					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
 					_builder?.add_module (_module.Name, _module_prefix, _module_attr.m_description);
 					//
-					foreach (var _method in _module.GetMethods ()) {
+					MethodInfo _jwt_reconnect_func = null;
+					Action<MethodInfo> _process_method = (_method) => {
+						// process attribute
 						var _method_attrs = (from p in _method.GetCustomAttributes () where p is IHTTPMethod select p as IHTTPMethod);
-						if (_method_attrs.Count () == 0)
-							continue;
-						var _method_attr = _method_attrs.First ();
-						var _params = _method.GetParameters ();
-						//
-						_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
-						string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
-						foreach (var _param in _params) {
-							if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
-								continue;
-							if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
-								continue;
-							var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
-							var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
-							_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
+						if (_method_attrs.Count () > 1) {
+							throw new Exception ("Simultaneous use of multiple HTTP Attribute is not supported");
 						}
-						add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method));
+						var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
+						//
+						var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
+						if (_jwt_attrs.Count () > 1) {
+							throw new Exception ("Simultaneous use of multiple HTTP Attribute is not supported");
+						}
+						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
+						//
+						var _params = _method.GetParameters ();
+						if (_jwt_type == "Reconnect") {
+							if (_method.ReturnType != _module)
+								throw new Exception ("Return value in [JWTReconnect] method must be current class type");
+							if (!_method.IsStatic)
+								throw new Exception ("[JWTReconnect] method must be static");
+							if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
+								throw new Exception ("[JWTReconnect] can only have one parameter, and the type of parameter is JObject");
+							if (_jwt_reconnect_func != null)
+								throw new Exception ("[JWTReconnect] cannot appear twice in the same module");
+							_jwt_reconnect_func = _method;
+						} else {
+							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
+							if (!_method.IsStatic) {
+								if (_jwt_reconnect_func == null)
+									throw new Exception ("A module that has a non-static HTTP method must contain the [JWTReconnect] method");
+								_builder?.add_jwt_param (_module.Name, _method_attr.Type, _method.Name);
+							}
+							//
+							string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
+							foreach (var _param in _params) {
+								if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
+									continue;
+								if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
+									continue;
+								var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
+								var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
+								_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
+							}
+							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method, _jwt_reconnect_func));
+						}
+					};
+					// process static method
+					foreach (var _method in _module.GetMethods ()) {
+						if (!_method.IsStatic)
+							continue;
+						_process_method (_method);
+					}
+					// process dynamic method
+					foreach (var _method in _module.GetMethods ()) {
+						if (_method.IsStatic)
+							continue;
+						_process_method (_method);
 					}
 				}
 			}
 			m_swagger_data = _builder?.build ().to_bytes ();
-			//
 			//
 			new Thread (() => {
 				while (true) {
@@ -252,6 +291,7 @@ namespace SparrowServer {
 					GC.Collect ();
 				}
 			}).Start ();
+			//
 			try {
 				while (true) {
 					var ctx = m_listener.GetContext ();

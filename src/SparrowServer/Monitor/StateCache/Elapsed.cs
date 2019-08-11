@@ -5,51 +5,55 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Monitor.StateCache {
+	struct _ElapsedSavedItem {
+		public long elapsed_min;
+		public long elapsed_max;
+		public long request_count;
+		public long elapsed_sum;
+	}
+
+	struct _ElapsedReportdItem {
+		public long elapsed_min;
+		public long elapsed_max;
+		public long elapsed_average;
+	}
+
 	public class Elapsed {
 		public Elapsed (string _name, params string [] _labels) {
 			m_name = _name;
 			m_labels = _labels;
 			if ((_labels?.Length ?? 0) < 1)
 				throw new Exception ("标签数量错误");
-			_TimeInc.add_action (() => {
-				var _val = new long [m_labels.Length];
-				for (int i = 0; i < _val.Length; ++i)
-					_val [i] = 0;
-				lock (m_values) {
-					m_values.Add (new Dictionary<int, int> [m_labels.Length]);
-					if (m_values.Count > 600)
-						m_values.RemoveAt (0);
-				}
-			});
+			m_values = new _ElapsedSavedItem [_labels.Length];
+			for (int i = 0; i < _labels.Length; ++i)
+				m_values [i] = new _ElapsedSavedItem () { elapsed_min = 0, elapsed_max = 0, request_count = 0, elapsed_sum = 0 };
 		}
 
-		public void add_value (int _index, int _elapsed_ms) {
+		public void add_value (int _index, long _elapsed_ms) {
 			lock (m_values) {
-				if (m_values.Count > 0 && _index >= 0 && _index < m_labels.Length) {
-					if (m_values [m_values.Count - 1] [_index] == null) {
-						m_values [m_values.Count - 1] [_index] = new Dictionary<int, int> () { [_elapsed_ms] = 1 };
-					} else if (m_values [m_values.Count - 1] [_index].ContainsKey (_elapsed_ms)) {
-						++m_values [m_values.Count - 1] [_index] [_elapsed_ms];
+				if (_index >= 0 && _index < m_labels.Length) {
+					if (m_values [_index].elapsed_min == -1) {
+						m_values [_index].elapsed_min = m_values [_index].elapsed_max = _elapsed_ms;
 					} else {
-						m_values [m_values.Count - 1] [_index].Add (_elapsed_ms, 1);
+						m_values [_index].elapsed_min = Math.Min (m_values [_index].elapsed_min, _elapsed_ms);
+						m_values [_index].elapsed_max = Math.Max (m_values [_index].elapsed_max, _elapsed_ms);
 					}
+					m_values [_index].request_count++;
+					m_values [_index].elapsed_sum += _elapsed_ms;
 				}
 			}
 		}
 
-		public JObject get_values (int _count) {
-			_count = (_count < 1 ? m_values.Count : Math.Min (_count, m_values.Count));
+		public JObject get_values () {
 			lock (m_values) {
-				var _count_items = m_values.Skip (m_values.Count - _count);
-				var _values = new Dictionary<int, int> [m_labels.Length];
-				// TODO: Counter
-				return new { type = "counter", name = m_name, labels = m_labels, values = _values }.json ();
+				var _values = (from p in m_values select new _ElapsedReportdItem () { elapsed_min = p.elapsed_min, elapsed_max = p.elapsed_max, elapsed_average = (long) (p.elapsed_sum / (double) p.request_count + 0.5000001) });
+				return new { type = "elapsed", name = m_name, labels = m_labels, values = m_values }.json ();
 			}
 		}
 
 		private string m_name;
 		private string [] m_labels;
 		//
-		private List<Dictionary<int, int> []> m_values = new List<Dictionary<int, int> []> ();
+		private _ElapsedSavedItem [] m_values;
 	}
 }

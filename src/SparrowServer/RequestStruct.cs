@@ -9,10 +9,9 @@ using System.Threading.Tasks;
 
 namespace SparrowServer {
 	class RequestStruct {
-		public RequestStruct (MethodInfo _method) {
+		public RequestStruct (MethodInfo _method, MethodInfo _auth_method) {
 			m_method = _method;
-			if (!m_method.IsStatic)
-				throw new Exception ("Method must be static / 方法必须声明为静态");
+			m_auth_method = _auth_method;
 			foreach (var _param in m_method.GetParameters ()) {
 				if (_param.ParameterType == typeof (FawRequest)) {
 					m_params.Add ((null, "FawRequest"));
@@ -30,33 +29,38 @@ namespace SparrowServer {
 		}
 
 		public void process (FawRequest _req, FawResponse _res) {
-			var _params = new object [m_params.Count];
-			bool _ignore_return = false;
-			for (int i = 0; i < m_params.Count; ++i) {
-				if (m_params [i].Item1 != null) {
-					_params [i] = _req.get_type_value (m_params [i].Item1, m_params [i].Item2);
-				} else {
-					switch (m_params [i].Item2) {
-						case "FawRequest":
-							_params [i] = _req;
-							break;
-						case "FawResponse":
-							_params [i] = _res;
-							_ignore_return = true;
-							break;
-						case ":IP":
-							_params [i] = _req.m_ip;
-							break;
-						case ":AgentIP":
-							_params [i] = _req.m_agent_ip;
-							break;
-						default:
-							throw new Exception ("Request parameter types that are not currently supported / 暂不支持的Request参数类型");
+			try {
+				object _obj = null;
+				if (!m_method.IsStatic) {
+					m_auth_method.Invoke (null, new object [] { _req.m_posts });
+				}
+				//
+				var _params = new object [m_params.Count];
+				bool _ignore_return = false;
+				for (int i = 0; i < m_params.Count; ++i) {
+					if (m_params [i].Item1 != null) {
+						_params [i] = _req.get_type_value (m_params [i].Item1, m_params [i].Item2);
+					} else {
+						switch (m_params [i].Item2) {
+							case "FawRequest":
+								_params [i] = _req;
+								break;
+							case "FawResponse":
+								_params [i] = _res;
+								_ignore_return = true;
+								break;
+							case ":IP":
+								_params [i] = _req.m_ip;
+								break;
+							case ":AgentIP":
+								_params [i] = _req.m_agent_ip;
+								break;
+							default:
+								throw new Exception ("Request parameter types that are not currently supported");
+						}
 					}
 				}
-			}
-			try {
-				var _ret = m_method.Invoke (null, _params);
+				var _ret = m_method.Invoke (_obj, _params);
 				//if (_ret.GetType () == typeof (Task<>)) // 始终为False
 				if (_ret is Task _t) {
 					if (_ret.GetType () != typeof (Task)) {
@@ -89,7 +93,7 @@ namespace SparrowServer {
 			}
 		}
 
-		MethodInfo m_method = null;
+		MethodInfo m_method = null, m_auth_method = null;
 		private List<(Type, string)> m_params = new List<(Type, string)> ();
 	}
 }
