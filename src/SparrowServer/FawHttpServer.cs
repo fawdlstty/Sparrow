@@ -248,13 +248,10 @@ namespace SparrowServer {
 							if (_jwt_reconnect_func != null)
 								throw new Exception ("[JWTReconnect] cannot appear twice in the same module");
 							_jwt_reconnect_func = _method;
-						} else {
-							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, _method_attr.Summary, _method_attr.Description);
-							if (!_method.IsStatic) {
-								if (_jwt_reconnect_func == null)
-									throw new Exception ("A module that has a non-static HTTP method must contain the [JWTReconnect] method");
-								_builder?.add_jwt_param (_module.Name, _method_attr.Type, _method.Name);
-							}
+						} else if (_method_attr != null) {
+							if (!_method.IsStatic && _jwt_reconnect_func == null)
+								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTReconnect] method");
+							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
 							//
 							string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
 							foreach (var _param in _params) {
@@ -266,7 +263,7 @@ namespace SparrowServer {
 								var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
 								_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
 							}
-							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method, _jwt_reconnect_func));
+							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
 						}
 					};
 					// process static method

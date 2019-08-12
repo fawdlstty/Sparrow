@@ -15,6 +15,7 @@ namespace SparrowServer.Swagger {
 	class _DocMethod {
 		public string m_request_type;
 		public string m_name;
+		public bool m_api_key;
 		public string m_summary;
 		public string m_description;
 		public List<_DocParam> m_params = new List<_DocParam> ();
@@ -42,6 +43,14 @@ namespace SparrowServer.Swagger {
 					["contact"] = new JObject { ["email"] = _doc_info.Contact, },
 					//["license"] = new JObject { ["name"] = "Unlicense", ["url"] = "#", },
 				},
+				["securityDefinitions"] = new JObject {
+					["APIKeyHeader"] = new JObject {
+						["type"] = "apiKey",
+						["in"] = "header",
+						["name"] = "X-API-Key",
+					}
+				},
+				["security"] = new JArray { new JObject { ["apiKey"] = new JArray () } },
 				//["externalDocs"] = new JObject { ["description"] = "查看更多文档", ["url"] = "#", },
 			};
 			//m_obj = new JObject {
@@ -64,7 +73,7 @@ namespace SparrowServer.Swagger {
 			m_modules.Add (new _DocModule { m_name = _module_name, m_prefix = _module_prefix, m_description = _description });
 		}
 
-		public void add_method (string _module_name, string _request_type, string _method_name, string _summary, string _description = "") {
+		public void add_method (string _module_name, string _request_type, string _method_name, bool _api_key, string _summary, string _description = "") {
 			if (_module_name.is_null () || _method_name.is_null ())
 				throw new Exception ("Name format error");
 			if (_description.is_null ())
@@ -73,30 +82,11 @@ namespace SparrowServer.Swagger {
 				if (m_modules [i].m_name == _module_name) {
 					if ((from p in m_modules [i].m_methods where p.m_request_type == _request_type && p.m_name == _method_name select 1).Count () > 0)
 						throw new Exception ("Repeated addition of methods");
-					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_summary = _summary, m_description = _description });
+					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_api_key = _api_key, m_summary = _summary, m_description = _description });
 					return;
 				}
 			}
 			throw new Exception ("Module is not added");
-		}
-
-		public void add_jwt_param (string _module_name, string _request_type, string _method_name) {
-			if (_module_name.is_null () || _method_name.is_null ())
-				throw new Exception ("Name format error");
-			string _param_name = "X-API-Key";
-			for (int i = m_modules.Count - 1; i >= 0; --i) {
-				if (m_modules [i].m_name == _module_name) {
-					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
-						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
-							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
-								throw new Exception ("Repeated addition of params");
-							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = "apiKey", m_description = "JWT API Key", m_in = "header" });
-							return;
-						}
-					}
-				}
-			}
-			throw new Exception ("Module or method is not added");
 		}
 
 		public void add_param (string _module_name, string _request_type, string _method_name, string _param_name, string _param_type, string _description = "") {
@@ -136,8 +126,9 @@ namespace SparrowServer.Swagger {
 							["type"] = _param.m_type,
 						});
 					}
-					_paths [$"/api/{_module.m_prefix}/{_method.m_name}"] = new JObject {
-						[_method.m_request_type.ToLower ()] = new JObject {
+					string _key1 = $"/api/{_module.m_prefix}/{_method.m_name}", _key2 = _method.m_request_type.ToLower ();
+					_paths [_key1] = new JObject {
+						[_key2] = new JObject {
 							["tags"] = new JArray () { _module.m_name },
 							["summary"] = _method.m_summary,
 							["description"] = _method.m_description,
@@ -149,9 +140,10 @@ namespace SparrowServer.Swagger {
 								["200"] = new JObject { ["description"] = "success" },
 								["500"] = new JObject { ["description"] = "fail" },
 							},
-							//["security"] = new JArray {},
 						}
 					};
+					if (_method.m_api_key)
+						_paths [_key1] [_key2] ["security"] = new JArray { new JObject { ["APIKeyHeader"] = new JArray () } };
 				}
 			}
 			m_obj ["tags"] = _tags;

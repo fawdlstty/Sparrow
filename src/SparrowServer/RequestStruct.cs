@@ -9,9 +9,15 @@ using System.Threading.Tasks;
 
 namespace SparrowServer {
 	class RequestStruct {
-		public RequestStruct (MethodInfo _method, MethodInfo _auth_method) {
+		public RequestStruct (MethodInfo _method, MethodInfo _auth_method, string _jwt_type) {
 			m_method = _method;
 			m_auth_method = _auth_method;
+			m_jwt_type = _jwt_type;
+			if (m_jwt_type == "Gen") {
+				(JObject, DateTime) _jwt_gen_ret = (null, DateTime.Now);
+				if (_jwt_gen_ret.GetType () != _method.ReturnType)
+					throw new Exception ("[JWTGen] method return type must be (JObject, DateTime)");
+			}
 			foreach (var _param in m_method.GetParameters ()) {
 				if (_param.ParameterType == typeof (FawRequest)) {
 					m_params.Add ((null, "FawRequest"));
@@ -32,7 +38,7 @@ namespace SparrowServer {
 			try {
 				object _obj = null;
 				if (!m_method.IsStatic) {
-					m_auth_method.Invoke (null, new object [] { _req.m_posts });
+					_obj = m_auth_method.Invoke (null, new object [] { _req.m_headers ["X-API-Key"] });
 				}
 				//
 				var _params = new object [m_params.Count];
@@ -70,6 +76,10 @@ namespace SparrowServer {
 						_ret = null;
 					}
 				}
+				if (m_jwt_type == "Gen") {
+					var (_o, _exp) = ((JObject, DateTime)) _ret;
+					_ret = JWTManager.Generate (_o, _exp);
+				}
 				if (!_ignore_return) {
 					if (_ret is byte _byte) {
 						_res.write (_byte);
@@ -93,7 +103,8 @@ namespace SparrowServer {
 			}
 		}
 
-		MethodInfo m_method = null, m_auth_method = null;
+		private MethodInfo m_method = null, m_auth_method = null;
 		private List<(Type, string)> m_params = new List<(Type, string)> ();
+		private string m_jwt_type = "";
 	}
 }
