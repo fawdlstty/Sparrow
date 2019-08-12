@@ -38,7 +38,8 @@ namespace SparrowServer {
 			try {
 				object _obj = null;
 				if (!m_method.IsStatic) {
-					_obj = m_auth_method.Invoke (null, new object [] { _req.m_headers ["X-API-Key"] });
+					var _jwt_obj = JWTManager.Check (_req.m_headers ["X-API-Key"]);
+					_obj = m_auth_method.Invoke (null, new object [] { _jwt_obj });
 				}
 				//
 				var _params = new object [m_params.Count];

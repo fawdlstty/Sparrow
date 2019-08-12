@@ -56,9 +56,9 @@ Run the project at this point and the document will be generated automatically. 
 
 ## Document / 文档
 
-[English document](./doc/en-us.md)
+[00 introduction](./doc/00_en_introduction.md)
 
-[中文文档](./doc/zh-cn.md)
+[00 入门](./doc/00_zh_introduction.md)
 
 ## Reference / 引用
 
@@ -70,7 +70,7 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
-JWT鉴权（JWTGen返回值的处理）
+完善JWT文档
 
 数据检查
 
