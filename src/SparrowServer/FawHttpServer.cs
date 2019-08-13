@@ -3,7 +3,6 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -12,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using SparrowServer.Monitor;
+using SparrowServer.HttpProtocol;
 
 namespace SparrowServer {
 	public class FawHttpServer {

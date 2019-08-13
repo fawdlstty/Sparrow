@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SparrowServer {
+namespace SparrowServer.HttpProtocol {
 	public class FawRequest {
 		public string m_ip = "";
 		public string m_agent_ip = "";

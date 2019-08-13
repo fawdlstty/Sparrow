@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace SparrowServer {
+namespace SparrowServer.HttpProtocol {
 	public class FawResponse {
 		public void write (byte _data) { m_data.Add (_data); }
 		public void write (byte [] _data) { m_data.AddRange (_data); }
