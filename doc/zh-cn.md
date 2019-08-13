@@ -20,7 +20,7 @@ public class HelloModule {
 * 模块的类名称需要以 `Module` 结尾，比如 `UserServiceModule`、`TestModule` 等
 * 模块只能在一个项目里面，然后需要将项目Assembly传递给HttpServer，才会最终生效
 
-## Sparrow 方法
+## Sparrow 静态方法
 
 服务方法必须在服务模块类的内部，也就是说如果类没有 Sparrow 服务模块标记（HTTPModule），那么方法无法识别。另外方法必须声明为静态方法
 
@@ -172,3 +172,51 @@ public static test_struct test_struct (test_struct val) {
 ```json
 {"result":"success","content":{"name":"kangkang","age":19}}
 ```
+
+## Sparrow 鉴权
+
+### 描述
+
+目前 Sparrow 支持的鉴权方式是 JWT 鉴权。JWT 鉴权的思路为：首先服务器保存一条秘钥，然后通过签发JWT的方式给予前端，这条签发数据包含少量自定义数据及过期时间。前端在过期时间内通过在 HTTP 请求头加入：
+
+```http header
+X-API-Key: token_data...
+```
+
+即可调用鉴权方法。这种方式有个好处就是，服务器不用保存 Session 信息，但有一点需要特别注意：服务器端的签发秘钥一定不能泄露，否则需要修改。建议单体应用使用：
+
+```csharp
+Guid.NewGuid ().ToString ("N");
+```
+
+这样的方式获取，可以在很大程度上保证秘钥安全，如果不小心泄露，重启一下服务器就行了。
+
+### 用法
+
+```csharp
+[HTTPModule ("Test for JWT")]
+public class JWTTestModule {
+    [HTTP.GET ("generate jwt token"), JWTGen]
+    public static (JObject, DateTime) generate () {
+        return (new JObject { ["test"] = "hello" }, DateTime.Now.AddMinutes (2));
+    }
+
+    [JWTRequest]
+    public static JWTTestModule _check_auth (JObject _jwt) {
+        return new JWTTestModule { n = 100 };
+    }
+
+    [HTTP.GET ("get the 'n' value")]
+    public int get_value () {
+        return n;
+    }
+
+    private int n = 0;
+}
+```
+
+首先 generate 静态方法具有两个属性，`[HTTP.GET]` 及 `[JWTGen]`，后者的意思是，这个Web方法用于签发API-Key，有了这个标注后，返回值类型必须为 `(JObject, DateTime)`，前者为用户自己储存的数据内容（名称不能为exp），后者代表签发的 Key 的有效期限，比如此处 Key 的有效期为两分钟。这时候，前端调用这个静态方法，就能获取到 API-Key 了。
+
+第二个方法 _check_auth 具有 `[JWTRequest]` 属性，每个 HTTP 服务类都只能有一个，作用是，用户想要请求非静态方法时，通过这个方法来构造对象。能调用到这个函数代表已经鉴权通过了，接下来需要手工验证自己存储的 JWT 数据来生成对象。一般有两种方式，new 一个或者从字典缓存中取出来，具体做法需要看自己的业务情况。
+
+然后是 get_value 方法。用户如果想要请求到这个非静态方法，首先需要设置 HTTP 头：`X-API-Key`，内容是通过 `[JWTGen]` 方法签发的 Key，Sparrow 此时会验证 Key 是否有效，有效将调用 `[JWTRequest]` 标注的方法来生成对象，然后再调用到 get_value。此处测试调用显示变量 `n` 的值为 100。

@@ -12,7 +12,7 @@ namespace TestServer {
 			return (new JObject { ["test"] = "hello" }, DateTime.Now.AddMinutes (2));
 		}
 
-		[JWTReconnect]
+		[JWTRequest]
 		public static JWTTestModule _check_auth (JObject _jwt) {
 			return new JWTTestModule { n = 100 };
 		}

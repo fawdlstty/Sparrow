@@ -31,7 +31,7 @@ Sparrow会在模块中搜索所有可能的Web服务，生成文档时需要传�
 
 ```csharp
 static void Main (string [] args) {
-    FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), 1234);
+    FawHttpServer _sss = new FawHttpServer (1234, Assembly.GetExecutingAssembly (), Guid.NewGuid ().ToString ("N"));
     // Without calling this interface, the swagger document is not generated
     // 如果没有调用这个接口，将不会生成swagger文档
     _sss.set_doc_info (new WEBDocInfo {
@@ -69,8 +69,6 @@ Run the project at this point and the document will be generated automatically. 
 <https://github.com/jwt-dotnet/jwt>
 
 ## TODO / 待完善
-
-JWT鉴权（JWTGen返回值的处理）
 
 数据检查
 

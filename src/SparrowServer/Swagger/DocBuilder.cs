@@ -30,39 +30,43 @@ namespace SparrowServer.Swagger {
 
 	public class DocBuilder {
 		public DocBuilder (WEBDocInfo _doc_info) {
+			//m_obj = new JObject {
+			//	["swagger"] = "2.0",
+			//	["schemes"] = new JArray { _doc_info.Scheme },
+			//	["host"] = _doc_info.Host,
+			//	["basePath"] = "/",
+			//	["info"] = new JObject {
+			//		["title"] = _doc_info.DocName,
+			//		["version"] = _doc_info.Version,
+			//		["description"] = _doc_info.Description,
+			//		//["termsOfService"] = "",
+			//		["contact"] = new JObject { ["email"] = _doc_info.Contact, },
+			//		//["license"] = new JObject { ["name"] = "Unlicense", ["url"] = "#", },
+			//	},
+			//	["securityDefinitions"] = new JObject {
+			//		["APIKeyHeader"] = new JObject {
+			//			["type"] = "apiKey",
+			//			["in"] = "header",
+			//			["name"] = "X-API-Key",
+			//		}
+			//	},
+			//	["security"] = new JArray { new JObject { ["apiKey"] = new JArray () } },
+			//	//["externalDocs"] = new JObject { ["description"] = "查看更多文档", ["url"] = "#", },
+			//};
 			m_obj = new JObject {
-				["swagger"] = "2.0",
-				["schemes"] = new JArray { _doc_info.Scheme },
-				["host"] = _doc_info.Host,
-				["basePath"] = "/",
+				["openapi"] = "3.0.0",
 				["info"] = new JObject {
 					["title"] = _doc_info.DocName,
-					["version"] = _doc_info.Version,
 					["description"] = _doc_info.Description,
-					//["termsOfService"] = "",
-					["contact"] = new JObject { ["email"] = _doc_info.Contact, },
-					//["license"] = new JObject { ["name"] = "Unlicense", ["url"] = "#", },
+					["version"] = _doc_info.Version,
 				},
-				["securityDefinitions"] = new JObject {
-					["APIKeyHeader"] = new JObject {
-						["type"] = "apiKey",
-						["in"] = "header",
-						["name"] = "X-API-Key",
-					}
-				},
-				["security"] = new JArray { new JObject { ["apiKey"] = new JArray () } },
-				//["externalDocs"] = new JObject { ["description"] = "查看更多文档", ["url"] = "#", },
+				["servers"] = new JArray { new JObject {
+					["url"] = $"{_doc_info.Scheme}://{_doc_info.Host}",
+					["description"] = "",
+				}},
+				["components"] = JObject.Parse ("{\"securitySchemes\":{\"ApiKeyAuth\":{\"type\":\"apiKey\",\"in\":\"header\",\"name\":\"X-API-Key\"}}}"),
+				["paths"] = new JObject (),
 			};
-			//m_obj = new JObject {
-			//	["openapi"] = "3.0.0",
-			//	["info"] = _doc_info.DocName,
-			//	["description"] = _doc_info.Description,
-			//	["version"] = _doc_info.Version,
-			//	["servers"] = new JArray { new JObject {
-			//		["url"] = $"{_doc_info.Scheme}://{_doc_info.Host}",
-			//		["description"] = "测试接口",
-			//	}}
-			//};
 		}
 
 		public void add_module (string _module_name, string _module_prefix, string _description) {
@@ -108,14 +112,54 @@ namespace SparrowServer.Swagger {
 		}
 
 		public string build () {
+			//var _tags = new JArray ();
+			//var _paths = new JObject ();
+			//foreach (var _module in m_modules) {
+			//	_tags.Add (new JObject {
+			//		["name"] = _module.m_name,
+			//		["description"] = _module.m_description,
+			//	});
+			//	foreach (var _method in _module.m_methods) {
+			//		var _parameters = new JArray ();
+			//		foreach (var _param in _method.m_params) {
+			//			_parameters.Add (new JObject {
+			//				["in"] = _param.m_in,
+			//				["name"] = _param.m_name,
+			//				["description"] = _param.m_description,
+			//				["required"] = true,
+			//				["type"] = _param.m_type,
+			//			});
+			//		}
+			//		string _key1 = $"/api/{_module.m_prefix}/{_method.m_name}", _key2 = _method.m_request_type.ToLower ();
+			//		_paths [_key1] = new JObject {
+			//			[_key2] = new JObject {
+			//				["tags"] = new JArray () { _module.m_name },
+			//				["summary"] = _method.m_summary,
+			//				["description"] = _method.m_description,
+			//				["operationId"] = "",
+			//				["consumes"] = new JArray { "application/json", "application/x-www-form-urlencoded" },
+			//				["produces"] = new JArray { "application/json" },
+			//				["parameters"] = _parameters,
+			//				["responses"] = new JObject {
+			//					["200"] = new JObject { ["description"] = "success" },
+			//					["500"] = new JObject { ["description"] = "fail" },
+			//				},
+			//			}
+			//		};
+			//		if (_method.m_api_key)
+			//			_paths [_key1] [_key2] ["security"] = new JArray { new JObject { ["APIKeyHeader"] = new JArray () } };
+			//	}
+			//}
+			//m_obj ["tags"] = _tags;
+			//m_obj ["paths"] = _paths;
 			var _tags = new JArray ();
-			var _paths = new JObject ();
 			foreach (var _module in m_modules) {
 				_tags.Add (new JObject {
 					["name"] = _module.m_name,
 					["description"] = _module.m_description,
 				});
 				foreach (var _method in _module.m_methods) {
+					string _key1 = $"/api/{_module.m_prefix}/{_method.m_name}", _key2 = _method.m_request_type.ToLower ();
 					var _parameters = new JArray ();
 					foreach (var _param in _method.m_params) {
 						_parameters.Add (new JObject {
@@ -126,46 +170,21 @@ namespace SparrowServer.Swagger {
 							["type"] = _param.m_type,
 						});
 					}
-					string _key1 = $"/api/{_module.m_prefix}/{_method.m_name}", _key2 = _method.m_request_type.ToLower ();
-					_paths [_key1] = new JObject {
+					m_obj ["paths"] [_key1] = new JObject {
 						[_key2] = new JObject {
 							["tags"] = new JArray () { _module.m_name },
-							["summary"] = _method.m_summary,
-							["description"] = _method.m_description,
-							["operationId"] = "",
-							["consumes"] = new JArray { "application/json", "application/x-www-form-urlencoded" },
-							["produces"] = new JArray { "application/json" },
 							["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },
 								["500"] = new JObject { ["description"] = "fail" },
 							},
-						}
+						},
 					};
 					if (_method.m_api_key)
-						_paths [_key1] [_key2] ["security"] = new JArray { new JObject { ["APIKeyHeader"] = new JArray () } };
+						m_obj ["paths"] [_key1] [_key2] ["security"] = JArray.Parse ("[{\"ApiKeyAuth\":[]}]");
 				}
 			}
 			m_obj ["tags"] = _tags;
-			m_obj ["paths"] = _paths;
-			//foreach (var _module in m_modules) {
-			//	foreach (var _method in _module.m_methods) {
-			//		m_obj ["paths"] = new JObject {
-			//			[$"/api/{_module.m_prefix}/{_method.m_name}"] = new JObject {
-			//				[_method.m_request_type.ToLower ()] = new JObject {
-			//					["summary"] = _method.m_summary,
-			//					["description"] = _method.m_description,
-			//					["content"] = new JObject {
-			//						["application/json"] = new JObject {
-			//							["schema"] = new JObject {
-			//							},
-			//						},
-			//					},
-			//				},
-			//			},
-			//		};
-			//	}
-			//}
 			return m_obj.to_str ();
 		}
 

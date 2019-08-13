@@ -32,14 +32,12 @@ namespace SparrowServer {
 				var _o = JObject.Parse (_json);
 				_o.Remove ("exp");
 				return _o;
-			} catch (TokenExpiredException ex) {
-				throw new Exception ($"JWT Error: {ex.Message}");
-			} catch (SignatureVerificationException ex) {
-				throw new Exception ($"JWT Error: {ex.Message}");
+			} catch (Exception) {
+				throw new _AuthException ();
 			}
 		}
 
 		// modify the secret to your private data
-		private static string m_secret = "{337EB857-A793-4EEE-80FB-2D28DF18AD12}";
+		public static string m_secret = "{337EB857-A793-4EEE-80FB-2D28DF18AD12}";
 	}
 }

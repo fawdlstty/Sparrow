@@ -32,8 +32,9 @@ namespace SparrowServer {
 
 
 
-		public FawHttpServer (Assembly assembly, ushort port) {
+		public FawHttpServer (ushort port, Assembly assembly, string jwt_secret) {
 			m_assembly = assembly;
+			JWTManager.m_secret = jwt_secret;
 			//https://www.w3cschool.cn/swaggerbootstrapui/swaggerbootstrapui-31rf32is.html
 			string _local_path = Path.GetDirectoryName (typeof (FawHttpServer).Assembly.Location).Replace ('\\', '/');
 			//
@@ -161,6 +162,10 @@ namespace SparrowServer {
 						result_data = get_failure_res ($"not given parameter {ex.Message.mid ("The given key '", "'")}");
 						res.StatusCode = 500;
 						_error = true;
+					} catch (_AuthException) {
+						result_data = get_failure_res ("Authorize failed");
+						res.StatusCode = 401;
+						_error = true;
 					} catch (Exception ex) {
 						result_data = get_failure_res (ex.GetType ().Name == "Exception" ? ex.Message : ex.ToString ());
 						res.StatusCode = 500;
@@ -238,19 +243,19 @@ namespace SparrowServer {
 						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
 						//
 						var _params = _method.GetParameters ();
-						if (_jwt_type == "Reconnect") {
+						if (_jwt_type == "Request") {
 							if (_method.ReturnType != _module)
-								throw new Exception ("Return value in [JWTReconnect] method must be current class type");
+								throw new Exception ("Return value in [JWTRequest] method must be current class type");
 							if (!_method.IsStatic)
-								throw new Exception ("[JWTReconnect] method must be static");
+								throw new Exception ("[JWTRequest] method must be static");
 							if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
-								throw new Exception ("[JWTReconnect] can only have one parameter, and the type of parameter is JObject");
+								throw new Exception ("[JWTRequest] can only have one parameter, and the type of parameter is JObject");
 							if (_jwt_reconnect_func != null)
-								throw new Exception ("[JWTReconnect] cannot appear twice in the same module");
+								throw new Exception ("[JWTRequest] cannot appear twice in the same module");
 							_jwt_reconnect_func = _method;
 						} else if (_method_attr != null) {
 							if (!_method.IsStatic && _jwt_reconnect_func == null)
-								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTReconnect] method");
+								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTRequest] method");
 							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
 							//
 							string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
