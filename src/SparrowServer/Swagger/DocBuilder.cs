@@ -29,7 +29,7 @@ namespace SparrowServer.Swagger {
 	}
 
 	public class DocBuilder {
-		public DocBuilder (WEBDocInfo _doc_info) {
+		public DocBuilder (WEBDocInfo _doc_info, string _schema) {
 			//m_obj = new JObject {
 			//	["swagger"] = "2.0",
 			//	["schemes"] = new JArray { _doc_info.Scheme },
@@ -61,7 +61,7 @@ namespace SparrowServer.Swagger {
 					["version"] = _doc_info.Version,
 				},
 				["servers"] = new JArray { new JObject {
-					["url"] = $"{_doc_info.Scheme}://{_doc_info.Host}",
+					["url"] = $"{_schema}://{_doc_info.Host}",
 					["description"] = "",
 				}},
 				["components"] = JObject.Parse ("{\"securitySchemes\":{\"ApiKeyAuth\":{\"type\":\"apiKey\",\"in\":\"header\",\"name\":\"X-API-Key\"}}}"),

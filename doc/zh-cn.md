@@ -51,14 +51,12 @@ throw new Exception ("What's your problem?");
 
 ### 文档地址
 
-Sparrow 对外提供swagger文档，启动项目后，通过访问 `http://127.0.0.1:port/swagger/index.html` 即可看到接口文档。
+Sparrow 对外提供swagger文档，启动项目后，通过访问 `http(s)://127.0.0.1:port/swagger/index.html` 即可看到接口文档，是否启用https根据最终是否调用set_ssl_file函数来确定（后面都假定协议为http）。
 
 ### 接口地址
 
-方法默认对外的接口地址为：`http://127.0.0.1:port/api/模块名去掉Module/方法名`。比如此处的接口地址为：  
+方法默认对外的接口地址为：`http(s)://127.0.0.1:port/api/模块名去掉Module/方法名`。比如此处的接口地址为：  
 <http://127.0.0.1:1234/api/Hello/test_hello>
-
-此处不支持HTTPS方法，考虑到不建议直接将服务暴露给外部，真正部署时建议使用网关（kong、ocelot）或反向代理（nginx、apache）。
 
 ### 标记
 

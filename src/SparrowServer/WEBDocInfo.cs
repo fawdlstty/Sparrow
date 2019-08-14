@@ -8,7 +8,6 @@ namespace SparrowServer {
 		public string Version		= "";
 		public string Description	= "";
 		public string Contact		= "";
-		public string Scheme		= "";
 		public string Host			= "";
 	}
 }

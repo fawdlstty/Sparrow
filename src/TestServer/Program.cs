@@ -16,10 +16,10 @@ namespace TestServer {
 				Version = "0.0.1",
 				Description = "This is a large document, and I have omitted 10,000 words here",
 				Contact = "f@fawdlstty.com",
-				Scheme = "http",
 				Host = "127.0.0.1:1234"
 			});
 			_sss.enable_monitor ();
+			_sss.set_ssl_file ("F:/test.pfx", "12345678");
 			_sss.run (1234);
 		}
 	}

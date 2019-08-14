@@ -46,7 +46,7 @@ namespace SparrowServer {
 			m_wwwroot = $"{Log.m_path}wwwroot/";
 		}
 
-		public void set_ssl (string _pfx_file, string _pwd = "") {
+		public void set_ssl_file (string _pfx_file, string _pwd = "") {
 			m_pfx = _pfx_file.is_null () ? null : (_pwd.is_null () ? new X509Certificate (_pfx_file) : new X509Certificate (_pfx_file, _pwd));
 		}
 
@@ -142,7 +142,7 @@ namespace SparrowServer {
 
 		// loop processing
 		public void run (ushort port) {
-			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info) : null);
+			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info, (m_pfx == null ? "http" : "https")) : null);
 			foreach (var _module in m_assembly.GetTypes ()) {
 				var _module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
 				if (_module_attr != null) {

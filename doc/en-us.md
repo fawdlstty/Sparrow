@@ -51,14 +51,12 @@ The return will be:
 
 ### Document URL
 
-Sparrow provides swagger document, after start the project, by visiting `http://127.0.0.1:port/swagger/index.html` can see interface document.
+Sparrow provides swagger document, after start the project, by visiting `http(s)://127.0.0.1:port/swagger/index.html` can see interface document, whether HTTPS is enabled depends on whether the set_ssl_file function is eventually called (the protocol is assumed to be HTTP).
 
 ### URL of the interface
 
-Method the default external interface address is: `http://127.0.0.1:port/api/Module name removed the Module/method name`. For example, the interface address here is:  
+Method the default external interface address is: `http(s)://127.0.0.1:port/api/Module name removed the Module/method name`. For example, the interface address here is:  
 <http://127.0.0.1:1234/api/Hello/test_hello>
-
-The HTTPS approach is not supported here, and considering that it is not recommended to expose services directly to the outside world, it is recommended to use gateways (kong, ocelot) or reverse proxies (nginx, apache) for real deployment.
 
 ### Attribute
 
