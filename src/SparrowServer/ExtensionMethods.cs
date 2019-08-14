@@ -423,7 +423,7 @@ namespace SparrowServer {
 					while ((nRead = gzip.Read (_data_block, 0, _data_block.Length)) > 0) {
 						if (_max_len >= 0) {
 							if (_max_len < 1024)
-								throw new Exception ("Decompress out of range");
+								throw new MyHttpException (413);
 							_max_len -= 1024;
 						}
 						data.AddRange (_data_block);
@@ -465,7 +465,7 @@ namespace SparrowServer {
 						while ((nRead = deflate.Read (data, 0, data.Length)) > 0) {
 							if (_max_len >= 0) {
 								if (_max_len < 1024)
-									throw new Exception ("Decompress out of range");
+									throw new MyHttpException (413);
 								_max_len -= 1024;
 							}
 							ms2.Write (data, 0, nRead);
@@ -501,6 +501,12 @@ namespace SparrowServer {
 		}
 		public static List<string> split_list (this string s, bool remove_empty, params char [] sp) {
 			return new List<string> (s.split (remove_empty, sp));
+		}
+		public static (string, string) split2 (this string s, params char [] sp) {
+			int _p = s.index_of (sp);
+			if (_p == -1)
+				return (s, "");
+			return (s.left (_p), s.mid (_p + 1));
 		}
 
 		// 切割字符串并转新类型

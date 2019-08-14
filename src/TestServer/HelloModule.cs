@@ -21,7 +21,7 @@ namespace TestServer {
 		}
 
 		[HTTP ("test test_context")]
-		public static string test_context1 ([ReqParam.IP] string ip, [ReqParam.AgentIP] string agent_ip) {
+		public static string test_context1 ([ReqParam.Option] string option, [ReqParam.IP] string ip, [ReqParam.AgentIP] string agent_ip) {
 			return "hello world";
 		}
 

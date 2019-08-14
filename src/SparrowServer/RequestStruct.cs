@@ -63,6 +63,9 @@ namespace SparrowServer {
 							case ":AgentIP":
 								_params [i] = _req.m_agent_ip;
 								break;
+							case ":Option":
+								_params [i] = _req.m_option;
+								break;
 							default:
 								throw new Exception ("Request parameter types that are not currently supported");
 						}

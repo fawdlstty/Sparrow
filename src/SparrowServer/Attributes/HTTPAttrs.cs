@@ -54,6 +54,7 @@ namespace SparrowServer.Attributes {
 	public class ReqParam {
 		public class IPAttribute : Attribute, IReqParam { public string Name { get { return ":IP"; } } }
 		public class AgentIPAttribute : Attribute, IReqParam { public string Name { get { return ":AgentIP"; } } }
+		public class OptionAttribute : Attribute, IReqParam { public string Name { get { return ":Option"; } } }
 	}
 	public class ParamAttribute : Attribute {
 		public ParamAttribute (string description) { m_description = description; }

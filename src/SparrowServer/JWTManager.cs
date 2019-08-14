@@ -10,11 +10,6 @@ using System.Text;
 namespace SparrowServer {
 	class JWTManager {
 		public static string Generate (JObject _o, DateTime _exp) {
-			//IJwtAlgorithm algorithm = new HMACSHA256Algorithm ();
-			//IJsonSerializer serializer = new JsonNetSerializer ();
-			//IBase64UrlEncoder urlEncoder = new JwtBase64UrlEncoder ();
-			//IJwtEncoder encoder = new JwtEncoder (algorithm, serializer, urlEncoder);
-			//return encoder.Encode (_o, m_secret);
 			var _builder = new JwtBuilder ().WithAlgorithm (new HMACSHA256Algorithm ()).WithSecret (m_secret);
 			_builder = _builder.AddClaim ("exp", new DateTimeOffset (_exp).ToUnixTimeSeconds ());
 			foreach (var (_key, _val) in _o) {
@@ -28,12 +23,11 @@ namespace SparrowServer {
 		public static JObject Check (string _token) {
 			try {
 				var _json = new JwtBuilder ().WithSecret (m_secret).MustVerifySignature ().Decode (_token);
-				Console.WriteLine (_json);
 				var _o = JObject.Parse (_json);
 				_o.Remove ("exp");
 				return _o;
 			} catch (Exception) {
-				throw new _AuthException ();
+				throw new MyHttpException (401);
 			}
 		}
 

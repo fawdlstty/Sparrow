@@ -5,11 +5,7 @@
 //using System.IO;
 //using System.Linq;
 //using System.Net;
-//using System.Net.Sockets;
-//using System.Net.Security;
 //using System.Reflection;
-//using System.Security.Authentication;
-//using System.Security.Cryptography.X509Certificates;
 //using System.Text;
 //using System.Threading;
 //using System.Threading.Tasks;
@@ -18,7 +14,7 @@
 //using SparrowServer.HttpProtocol;
 
 //namespace SparrowServer {
-//	public class FawHttpServer2 {
+//	public class FawHttpServer {
 //		//private delegate void RequestHandler (FawRequest _req, FawResponse _res);
 //		private Dictionary<string, RequestStruct> m_request_handlers = new Dictionary<string, RequestStruct> ();
 //		private void add_handler (string path_prefix, RequestStruct _req_struct) {
@@ -36,7 +32,7 @@
 
 
 
-//		public FawHttpServer2 (Assembly assembly, string jwt_secret) {
+//		public FawHttpServer (ushort port, Assembly assembly, string jwt_secret) {
 //			m_assembly = assembly;
 //			JWTManager.m_secret = jwt_secret;
 //			//https://www.w3cschool.cn/swaggerbootstrapui/swaggerbootstrapui-31rf32is.html
@@ -44,6 +40,19 @@
 //			//
 //			Log.m_path = (_local_path.right_is ("/") ? _local_path : $"{_local_path}/");
 //			m_wwwroot = $"{Log.m_path}wwwroot/";
+//			//
+//			m_listener = new HttpListener ();
+//			m_listener.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
+//			try {
+//				m_listener.Prefixes.Add ($"http://*:{port}/");
+//				m_listener.Start ();
+//			} catch (System.Net.HttpListenerException) {
+//				m_listener.Close ();
+//				m_listener = new HttpListener ();
+//				m_listener.AuthenticationSchemes = AuthenticationSchemes.Anonymous;
+//				m_listener.Prefixes.Add ($"http://127.0.0.1:{port}/");
+//				m_listener.Start ();
+//			}
 //		}
 
 //		public void set_doc_info (WEBDocInfo doc_info) {
@@ -57,18 +66,17 @@
 //		}
 
 //		// processing a request
-//		private void _request_once (Stream _req_stream) {
-//			//https://referencesource.microsoft.com/#System/net/System/Net/HttpListener.cs,671908476fdfe5be
+//		private void _request_once (HttpListenerContext ctx) {
 //			var _request_begin = DateTime.Now;
 //			bool _static = true, _error = false;
 
-//			var _req_bytes = new List<byte> ();
-//			while
+//			HttpListenerRequest req = ctx.Request;
+//			HttpListenerResponse res = ctx.Response;
 
 //			FawRequest _req = new FawRequest () { _check_int = m_check_int, _check_long = m_check_long, _check_string = m_check_string };
 //			FawResponse _res = new FawResponse ();
 //			_req.m_url = req.RawUrl; // this valus is lose schema://domain:host
-//			_req.m_method = req.HttpMethod.ToUpper ();
+//			_req.m_option = req.HttpMethod.ToUpper ();
 //			_req.m_path = req.RawUrl.simplify_path ();
 //			int _p = _req.m_path.IndexOfAny (new char [] { '?', '#' });
 //			if (_p > 0)
@@ -87,20 +95,20 @@
 //				_req.m_headers.Add (_key, req.Headers [_key]);
 //			foreach (string str_key in req.QueryString.AllKeys)
 //				_req.m_gets.Add (str_key, req.QueryString [str_key]);
-//			if (_req.m_method == "POST")
+//			if (_req.m_option == "POST")
 //				(_req.m_posts, _req.m_files) = parse_form (req);
 
 //			try {
 //				// compare query header
 //				res.StatusCode = 200;
 //				byte [] result_data = new byte [0];
-//				if (_req.m_method != "HEAD") {
+//				if (_req.m_option != "HEAD") {
 //					try {
 //						if (_req.m_path.left_is ("/api/")) {
 //							_static = false;
 //							bool _proc = false;
-//							if (m_request_handlers.ContainsKey ($"{_req.m_method} {_req.m_path}")) {
-//								m_request_handlers [$"{_req.m_method} {_req.m_path}"].process (_req, _res);
+//							if (m_request_handlers.ContainsKey ($"{_req.m_option} {_req.m_path}")) {
+//								m_request_handlers [$"{_req.m_option} {_req.m_path}"].process (_req, _res);
 //								_proc = true;
 //							} else if (m_request_handlers.ContainsKey ($" {_req.m_path}")) {
 //								m_request_handlers [$" {_req.m_path}"].process (_req, _res);
@@ -128,7 +136,7 @@
 //								_res.write (m_monitor.get_json (_req.get_value<int> ("count", false)));
 //								//_res.set_content_from_filename (_req.m_path);
 //							}
-//						} else if (_req.m_method == "GET") {
+//						} else if (_req.m_option == "GET") {
 //							bool _is_404 = (_req.m_path == "/404.html");
 //							if (_is_404) {
 //								_res.m_status_code = 404;
@@ -174,7 +182,7 @@
 //				};
 
 //				// HTTP头输入可以自定
-//				_unique_add_header ("Cache-Control", (_req.m_method == "GET" ? "private" : "no-store"));
+//				_unique_add_header ("Cache-Control", (_req.m_option == "GET" ? "private" : "no-store"));
 //				_unique_add_header ("Content-Type", "text/plain; charset=utf-8");
 //				_unique_add_header ("Server", "Microsoft-IIS/7.5"); // nginx/1.9.12
 //				_unique_add_header ("X-Powered-By", "ASP.NET");
@@ -211,7 +219,7 @@
 //		}
 
 //		// loop processing
-//		public void run (ushort port, string _x509_file = "") {
+//		public void run () {
 //			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info) : null);
 //			foreach (var _module in m_assembly.GetTypes ()) {
 //				var _module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
@@ -287,29 +295,10 @@
 //			}).Start ();
 //			//
 //			try {
-//				var _listener = new TcpListener (IPAddress.Loopback, port);
-//				X509Certificate _cer = (_x509_file.is_null () ? null : X509Certificate.CreateFromCertFile (_x509_file));
 //				while (true) {
-//					var client = _listener.AcceptTcpClient ();
-//					Task.Factory.StartNew ((_client) => {
-//						try {
-//							var _tcp_client = (TcpClient) _client;
-//							_tcp_client.Client.RemoteEndPoint.ToString ();
-//							using (var _source_stream = _tcp_client.GetStream ()) {
-//								if (_cer != null) {
-//									using (var _ssl_stream = new SslStream (_source_stream)) {
-//										_ssl_stream.AuthenticateAsServer (_cer, false, SslProtocols.Tls, true);
-//										_ssl_stream.ReadTimeout = 10000;
-//										_ssl_stream.WriteTimeout = 10000;
-//										_request_once (_ssl_stream);
-//									}
-//								} else {
-//									_request_once (_source_stream);
-//								}
-//							}
-//						} catch (Exception) {
-//						}
-//					}, client);
+//					var ctx = m_listener.GetContext ();
+//					Task.Factory.StartNew ((_ctx) => _request_once (_ctx as HttpListenerContext), ctx);
+//					//ThreadPool.QueueUserWorkItem ((_ctx) => { _request_once (_ctx as HttpListenerContext).Wait (); }, ctx);
 //				}
 //			} catch (Exception ex) {
 //				Log.show_error (ex);
@@ -319,6 +308,7 @@
 //		private Assembly m_assembly = null;
 //		private WEBDocInfo m_doc_info = null;
 //		private string m_wwwroot = "";
+//		private HttpListener m_listener = null;
 //		private byte [] m_swagger_data = null;
 //		private MonitoringManager m_monitor = null;
 

@@ -8,7 +8,7 @@ using System.Reflection;
 namespace TestServer {
 	class Program {
 		static void Main (string [] args) {
-			FawHttpServer _sss = new FawHttpServer (1234, Assembly.GetExecutingAssembly (), Guid.NewGuid ().ToString ("N"));
+			FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), Guid.NewGuid ().ToString ("N"));
 			// Without calling this interface, the swagger document is not generated
 			// 如果没有调用这个接口，将不会生成swagger文档
 			_sss.set_doc_info (new WEBDocInfo {
@@ -20,7 +20,7 @@ namespace TestServer {
 				Host = "127.0.0.1:1234"
 			});
 			_sss.enable_monitor ();
-			_sss.run ();
+			_sss.run (1234);
 		}
 	}
 }
