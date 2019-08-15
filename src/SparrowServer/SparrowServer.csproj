@@ -43,4 +43,8 @@
     <PackageReference Include="System.Management" Version="4.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\websocket-sharp\websocket-sharp.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,9 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using WebSocketSharp;
+using WebSocketSharp.Server;
 
 namespace SparrowServer.WSProtocol {
-	class ClientObserver {
+	class ClientObserver : WebSocketBehavior {
+		protected override void OnOpen () {
+			//this.ID
+			//Close ();
+		}
 
+		protected override void OnClose (CloseEventArgs e) {
+		}
+
+		protected override void OnMessage (MessageEventArgs e) {
+			if (Sessions.TryGetSession ("test_id", out var _session)) {
+				_session.Context.WebSocket.Send ("");
+			}
+		}
 	}
 }
