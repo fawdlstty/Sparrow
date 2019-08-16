@@ -5,14 +5,14 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Swagger {
-	class _DocModule {
+	internal class _DocModule {
 		public string m_name;
 		public string m_prefix;
 		public string m_description;
 		public List<_DocMethod> m_methods = new List<_DocMethod> ();
 	}
 
-	class _DocMethod {
+	internal class _DocMethod {
 		public string m_request_type;
 		public string m_name;
 		public bool m_api_key;
@@ -21,14 +21,14 @@ namespace SparrowServer.Swagger {
 		public List<_DocParam> m_params = new List<_DocParam> ();
 	}
 
-	class _DocParam {
+	internal class _DocParam {
 		public string m_name;
 		public string m_type;
 		public string m_description;
 		public string m_in;
 	}
 
-	public class DocBuilder {
+	internal class DocBuilder {
 		public DocBuilder (WEBDocInfo _doc_info, string _schema) {
 			//m_obj = new JObject {
 			//	["swagger"] = "2.0",

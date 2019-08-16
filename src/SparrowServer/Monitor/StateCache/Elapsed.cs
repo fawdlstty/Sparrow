@@ -5,20 +5,20 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Monitor.StateCache {
-	struct _ElapsedSavedItem {
+	internal struct _ElapsedSavedItem {
 		public long elapsed_min;
 		public long elapsed_max;
 		public long request_count;
 		public long elapsed_sum;
 	}
 
-	struct _ElapsedReportdItem {
+	internal struct _ElapsedReportdItem {
 		public long elapsed_min;
 		public long elapsed_max;
 		public long elapsed_average;
 	}
 
-	public class Elapsed {
+	internal class Elapsed {
 		public Elapsed (string _name, params string [] _labels) {
 			m_name = _name;
 			m_labels = _labels;

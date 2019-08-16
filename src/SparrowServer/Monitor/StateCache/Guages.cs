@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Monitor.StateCache {
-	public class Guages<T> {
+	internal class Guages<T> {
 		public Guages (string _name, T _min, T _max, params string [] _labels) {
 			m_name = _name;
 			m_min = _min;

@@ -25,6 +25,10 @@ namespace SparrowServer.HttpProtocol {
 		public Func<string, long, bool, bool> _check_long { get; set; } = null;
 		public Func<string, string, bool, bool> _check_string { get; set; } = null;
 
+		public string get_header (string _key) {
+			return m_headers.ContainsKey (_key) ? m_headers [_key] : "";
+		}
+
 		public T get_value<T> (string _varname, bool _force_valid = true) {
 			return (T) get_type_value (typeof (T), _varname, _force_valid);
 		}

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SparrowServer.Monitor {
-	public class MonitoringManager {
+	internal class MonitoringManager {
 		// 系统性能指标
 		private ComputerState.ISystem m_system = (Environment.OSVersion.Platform == PlatformID.Win32NT ? (ComputerState.ISystem) new ComputerState.Windows () : new ComputerState.Linux ());
 

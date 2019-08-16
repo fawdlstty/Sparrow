@@ -6,7 +6,7 @@ using System.Management;
 using System.Text;
 
 namespace SparrowServer.Monitor.ComputerState {
-	public class Windows : ISystem {
+	internal class Windows : ISystem {
 		// ref: https://github.com/dotnet/orleans/blob/master/src/TelemetryConsumers/Orleans.TelemetryConsumers.Counters/Statistics/PerfCounterEnvironmentStatistics.cs
 		private Process m_cur_process = Process.GetCurrentProcess ();
 		~Windows () {

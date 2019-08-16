@@ -74,9 +74,12 @@ namespace SparrowServer {
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
 
-				if (_req.m_option == "HEAD")
+				if (_req.m_option == "HEAD") {
 					throw new MyHttpException (204);
-				if (_req.m_path.left_is ("/api/")) {
+				} else if (_req.get_header ("Upgrade").ToLower ().IndexOf ("websocket") >= 0) {
+					_go_ws = true;
+					// TODO: check and reply
+				} else if (_req.m_path.left_is ("/api/")) {
 					_static = false;
 					bool _proc = false;
 					if (m_request_handlers.ContainsKey ($"{_req.m_option} {_req.m_path}")) {
@@ -139,7 +142,7 @@ namespace SparrowServer {
 			}
 			_req_stream.Write (_res.build_response (_req));
 			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-			return ((_go_ws && !_error), (_req.m_headers.ContainsKey ("X-API-Key") ? _req.m_headers ["X-API-Key"] : null));
+			return ((_go_ws && !_error), _req.get_header ("X-API-Key"));
 		}
 
 		// loop processing
@@ -273,7 +276,7 @@ namespace SparrowServer {
 		}
 
 		private void _loop_process_ws (Stream _stream, string _src_ip, string _api_key) {
-
+			// TODO: process message
 		}
 
 		private Assembly m_assembly = null;

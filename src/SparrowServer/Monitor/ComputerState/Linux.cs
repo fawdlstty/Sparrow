@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace SparrowServer.Monitor.ComputerState {
-	public class Linux : ISystem {
+	internal class Linux : ISystem {
 		// ref: https://github.com/dotnet/orleans/blob/master/src/TelemetryConsumers/Orleans.TelemetryConsumers.Linux/LinuxEnvironmentStatistics.cs
 		private Process m_cur_process = Process.GetCurrentProcess ();
 

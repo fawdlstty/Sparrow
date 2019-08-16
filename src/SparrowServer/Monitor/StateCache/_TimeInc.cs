@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading;
 
 namespace SparrowServer.Monitor.StateCache {
-	class _TimeInc {
+	internal class _TimeInc {
 		private _TimeInc () {
 			m_thread = new Thread (() => {
 				var _time = DateTime.Now;

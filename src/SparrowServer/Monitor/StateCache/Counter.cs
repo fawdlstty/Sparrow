@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 
 namespace SparrowServer.Monitor.StateCache {
-	public class Counter {
+	internal class Counter {
 		public Counter (string _name, params string [] _labels) {
 			m_name = _name;
 			m_labels = _labels;

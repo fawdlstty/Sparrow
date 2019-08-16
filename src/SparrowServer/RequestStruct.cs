@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using SparrowServer.HttpProtocol;
 
 namespace SparrowServer {
-	class RequestStruct {
+	internal class RequestStruct {
 		public RequestStruct (MethodInfo _method, MethodInfo _auth_method, string _jwt_type) {
 			m_method = _method;
 			m_auth_method = _auth_method;
