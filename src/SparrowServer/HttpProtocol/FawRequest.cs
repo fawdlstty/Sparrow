@@ -59,9 +59,9 @@ namespace SparrowServer.HttpProtocol {
 			}
 		}
 
-		public void parse (Stream _req_stream, string _src_ip) {
+		public void parse (Stream _req_stream, string _src_ip, int _first_byte = -1) {
 			int _header_max = 100 * 1024;
-			var _header_line = _read_line (_req_stream, ref _header_max).split (true, ' ');
+			var _header_line = _read_line (_req_stream, ref _header_max, _first_byte).split (true, ' ');
 			if (_header_line.Length < 3)
 				throw new MyHttpException (400);
 			_header_line [0] = _header_line [0].ToUpper ();
@@ -183,9 +183,14 @@ namespace SparrowServer.HttpProtocol {
 		}
 
 		// 读取一行
-		private static string _read_line (Stream _req_stream, ref int _header_max) {
+		private static string _read_line (Stream _req_stream, ref int _header_max, int _first_byte = -1) {
 			var _bytes = new List<byte> ();
 			int _max_len = 1024;
+			if (_first_byte != -1) {
+				if (--_header_max < 0)
+					throw new MyHttpException (413);
+				_bytes.Add ((byte) _first_byte);
+			}
 			while (--_max_len >= 0) {
 				int _ch = _req_stream.ReadByte ();
 				if (_ch == -1) {

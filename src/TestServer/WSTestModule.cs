@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using SparrowServer;
 using SparrowServer.Attributes;
 using System;
 using System.Collections.Generic;
@@ -7,14 +8,17 @@ using System.Text;
 namespace TestServer {
 	[WSModule ("webservice module")]
 	public class WSTestModule {
-		[JWTRequest]
+		[JWTConnect]
 		public static WSTestModule _check_auth (JObject _jwt) {
 			return new WSTestModule { n = 100 };
 		}
 
-		//[WSOnMsg]
-		public void on_msg (byte [] _data) {
-			
+		public void on_pong () {
+			//send_new_auth ();
+		}
+
+		public void on_recv (byte [] _data) {
+			var _str = _data.to_str ();
 		}
 
 		private int n = 0;

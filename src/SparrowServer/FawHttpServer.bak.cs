@@ -243,7 +243,7 @@
 //						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
 //						//
 //						var _params = _method.GetParameters ();
-//						if (_jwt_type == "Request") {
+//						if (_jwt_type == "Connect") {
 //							if (_method.ReturnType != _module)
 //								throw new Exception ("Return value in [JWTRequest] method must be current class type");
 //							if (!_method.IsStatic)

@@ -23,7 +23,7 @@ namespace TestServer {
 			_sss.enable_monitor ();
 			// If this function is called, the HTTPS protocol is provided externally, otherwise the HTTP protocol is provided
 			// 如果调用了这个函数，那么将对外提供https协议，否则提供http协议
-			_sss.set_ssl_file ("F:/test.pfx", "12345678");
+			//_sss.set_ssl_file ("F:/test.pfx", "12345678");
 			_sss.run (1234);
 		}
 	}

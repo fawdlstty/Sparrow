@@ -61,14 +61,15 @@ namespace SparrowServer {
 		}
 
 		// processing a request
-		private (bool, bool) _request_once (Stream _req_stream, string _src_ip) {
+		private (bool, string) _request_http_once (Stream _req_stream, string _src_ip, int _first_byte = -1) {
 			//https://referencesource.microsoft.com/#System/net/System/Net/HttpListener.cs,671908476fdfe5be
-			bool _static = true, _error = false;
+			bool _static = true, _error = false, _go_ws = false;
+			var _request_begin = DateTime.Now;
 
 			FawRequest _req = new FawRequest ();
 			FawResponse _res = new FawResponse ();
 			try {
-				_req.parse (_req_stream, _src_ip);
+				_req.parse (_req_stream, _src_ip, _first_byte);
 				_req._check_int = m_check_int;
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
@@ -137,7 +138,8 @@ namespace SparrowServer {
 				_error = true;
 			}
 			_req_stream.Write (_res.build_response (_req));
-			return (_static, _error);
+			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
+			return ((_go_ws && !_error), (_req.m_headers.ContainsKey ("X-API-Key") ? _req.m_headers ["X-API-Key"] : null));
 		}
 
 		// loop processing
@@ -165,7 +167,7 @@ namespace SparrowServer {
 						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
 						//
 						var _params = _method.GetParameters ();
-						if (_jwt_type == "Request") {
+						if (_jwt_type == "Connect") {
 							if (_method.ReturnType != _module)
 								throw new Exception ("Return value in [JWTRequest] method must be current class type");
 							if (!_method.IsStatic)
@@ -220,34 +222,58 @@ namespace SparrowServer {
 				var _listener = new TcpListener (IPAddress.Loopback, port);
 				_listener.Start ();
 				while (true) {
-					var _client = _listener.AcceptTcpClient ();
-					Task.Factory.StartNew (() => {
-						bool _static = false, _error = false;
-						var _request_begin = DateTime.Now;
-						try {
-							var _src_ip = _client.Client.RemoteEndPoint.to_str ();
-							using (var _source_stream = _client.GetStream ()) {
-								if (m_pfx != null) {
-									using (var _ssl_stream = new SslStream (_source_stream)) {
-										_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
-										_ssl_stream.ReadTimeout = 1000;
-										_ssl_stream.WriteTimeout = 1000;
-										(_static, _error) = _request_once (_ssl_stream, _src_ip);
+					var _tmp_client = _listener.AcceptTcpClient ();
+					// Task.Factory.StartNew  ThreadPool.QueueUserWorkItem
+					ThreadPool.QueueUserWorkItem ((_client_o) => {
+						using (TcpClient _client = _client_o as TcpClient) {
+							Console.WriteLine ("conn start");
+							try {
+								var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
+								using (var _source_stream = _client.GetStream ()) {
+									_source_stream.ReadTimeout = _source_stream.WriteTimeout = 66666;
+									if (m_pfx != null) {
+										using (var _ssl_stream = new SslStream (_source_stream)) {
+											_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
+											_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = 66666;
+											//(_static, _error) = _loop_process_http (_ssl_stream, _src_ip);
+											_loop_process_http (_ssl_stream, _src_ip);
+										}
+									} else {
+										//(_static, _error) = _loop_process_http (_source_stream, _src_ip);
+										_loop_process_http (_source_stream, _src_ip);
 									}
-								} else {
-									(_static, _error) = _request_once (_source_stream, _src_ip);
 								}
+							} catch (Exception) {
+								//_static = false;
+								//_error = true;
 							}
-						} catch (Exception) {
-							_static = false;
-							_error = true;
+							Console.WriteLine ("conn stop");
 						}
-						m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-					});
+					}, _tmp_client);
 				}
 			} catch (Exception ex) {
 				Log.show_error (ex);
 			}
+		}
+
+		private void _loop_process_http (Stream _stream, string _src_ip) {
+			//int _byte;
+			//while ((_byte = _stream.ReadByte ()) == -1)
+			//	Thread.Sleep (10);
+			while (true) {
+				var _buf = new byte [1] { 0 };
+				if (_stream.ReadAsync (_buf, 0, 1).Result == 0)
+					throw new Exception ("no data");
+				var (_go_ws, _api_key) = _request_http_once (_stream, _src_ip, _buf [0]);
+				if (_go_ws) {
+					_loop_process_ws (_stream, _src_ip, _api_key);
+					break;
+				}
+			}
+		}
+
+		private void _loop_process_ws (Stream _stream, string _src_ip, string _api_key) {
+
 		}
 
 		private Assembly m_assembly = null;
