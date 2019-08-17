@@ -9,10 +9,9 @@ namespace SparrowServer.Attributes {
 		public string m_description { get; private set; } = "";
 	}
 
-	public class WSMethodAttribute : Attribute, IHTTPMethod {
-		public WSMethodAttribute (string summary, string description = "") { Summary = summary; Description = description; }
-		public string Type { get { return ""; } }
+	// Method
+	public class WSMethodAttribute : Attribute {
+		public WSMethodAttribute (string summary = "") { Summary = summary; }
 		public string Summary { get; private set; } = "";
-		public string Description { get; private set; } = "";
 	}
 }
