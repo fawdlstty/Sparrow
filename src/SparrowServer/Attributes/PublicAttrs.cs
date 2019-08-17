@@ -7,4 +7,5 @@ namespace SparrowServer.Attributes {
 	public interface IJWTMethod { string Type { get; } }
 	public class JWTGenAttribute: Attribute, IJWTMethod { public string Type { get { return "Gen"; } } }
 	public class JWTConnectAttribute : Attribute, IJWTMethod { public string Type { get { return "Connect"; } } }
+	public class PureConnectAttribute : Attribute, IJWTMethod { public string Type { get { return "PureConnect"; } } }
 }

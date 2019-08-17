@@ -9,9 +9,14 @@ namespace TestServer {
 	// TODO: 此模块暂未完成，功能暂时无法使用
 	[WSModule ("webservice module")]
 	public class WSTestModule : WSObserver {
+		[PureConnect]
+		public static WSTestModule _check_auth () {
+			return new WSTestModule { n = 100 };
+		}
+
 		[JWTConnect]
 		public static WSTestModule _check_auth (JObject _jwt) {
-			return new WSTestModule { n = 100 };
+			return new WSTestModule { n = 200 };
 		}
 
 		[WSMethod]
