@@ -40,17 +40,41 @@ namespace SparrowServer {
 			m_assembly = assembly;
 			JWTManager.m_secret = jwt_secret;
 			//https://www.w3cschool.cn/swaggerbootstrapui/swaggerbootstrapui-31rf32is.html
-			string _local_path = Path.GetDirectoryName (typeof (FawHttpServer).Assembly.Location).Replace ('\\', '/');
-			//
-			Log.m_path = (_local_path.right_is ("/") ? _local_path : $"{_local_path}/");
-			m_wwwroot = $"{Log.m_path}wwwroot/";
+		}
+
+		public void set_keep_alive_ms (int _http = 10000, int _websocket = 66000) {
+			m_alive_http_ms = _http;
+			m_alive_websocket_ms = _websocket;
+		}
+
+		public void set_api_path (string _api_path = "/api") {
+			m_api_path = $"{_api_path}/";
+		}
+
+		public void set_res_from_path (string _path = "D:/wwwroot") {
+			_path = _path.Replace ('\\', '/');
+			m_res_path = (_path.right_is ("/") ? _path : $"{_path}/");
+			m_res_namespace = "";
+		}
+
+		public void set_res_from_namespace (string _namespace = "TestServer.res") {
+			m_res_path = "";
+			m_res_namespace = (_namespace.right_is (".") ? _namespace : $"{_namespace}.");
+		}
+
+
+
+		public void set_log_path (string _log_path = "D:/sparrow/log") {
+			_log_path = _log_path.Replace ('\\', '/');
+			Log.m_path = (_log_path.right_is ("/") ? _log_path : $"{_log_path}/");
 		}
 
 		public void set_ssl_file (string _pfx_file, string _pwd = "") {
 			m_pfx = _pfx_file.is_null () ? null : (_pwd.is_null () ? new X509Certificate (_pfx_file) : new X509Certificate (_pfx_file, _pwd));
 		}
 
-		public void set_doc_info (WEBDocInfo doc_info) {
+		public void set_doc_info (string _doc_path = "/swagger", WEBDocInfo doc_info = null) {
+			m_doc_path = $"{_doc_path}/";
 			m_doc_info = doc_info;
 		}
 
@@ -59,6 +83,8 @@ namespace SparrowServer {
 				m_monitor = (_enable ? new MonitoringManager () : null);
 			}
 		}
+
+
 
 		// processing a request
 		private (bool, string) _request_http_once (Stream _req_stream, string _src_ip, int _first_byte = -1) {
@@ -78,71 +104,72 @@ namespace SparrowServer {
 					throw new MyHttpException (204);
 				} else if (_req.get_header ("Upgrade").ToLower ().IndexOf ("websocket") >= 0) {
 					_go_ws = true;
+					_res.m_status_code = 101;
+					_res.m_headers [""] = "";
+					_res.m_headers [""] = "";
+					_res.m_headers [""] = "";
 					// TODO: check and reply
-				} else if (_req.m_path.left_is ("/api/")) {
+				} else if (!m_api_path.is_null () && _req.m_path.left_is (m_api_path.mid (1))) {
 					_static = false;
 					bool _proc = false;
-					if (m_request_handlers.ContainsKey ($"{_req.m_option} {_req.m_path}")) {
-						m_request_handlers [$"{_req.m_option} {_req.m_path}"].process (_req, _res);
+					if (m_request_handlers.ContainsKey ($"{_req.m_option} /{_req.m_path}")) {
+						m_request_handlers [$"{_req.m_option} /{_req.m_path}"].process (_req, _res);
 						_proc = true;
-					} else if (m_request_handlers.ContainsKey ($" {_req.m_path}")) {
-						m_request_handlers [$" {_req.m_path}"].process (_req, _res);
+					} else if (m_request_handlers.ContainsKey ($" /{_req.m_path}")) {
+						m_request_handlers [$" /{_req.m_path}"].process (_req, _res);
 						_proc = true;
 					}
 					if (!_proc)
 						throw new Exception ("Unknown request");
-				} else if (_req.m_path.left_is ("/swagger/") && m_doc_info != null) {
-					if (_req.m_path == "/swagger/api.json") {
+				} else if (m_doc_info != null && !m_doc_path.is_null () && _req.m_path.left_is (m_doc_path.mid (1))) {
+					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
 						_res.write (m_swagger_data);
 						_res.set_content_from_filename (_req.m_path);
 					} else {
-						var _asm_path = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid ("/swagger/")}";
-						using (var _stream = Assembly.GetCallingAssembly ().GetManifestResourceStream (_asm_path)) {
-							if (_stream == null)
-								throw new Exception ("File Not Found");
-							var _buffer = new byte [_stream.Length];
-							_stream.Read (_buffer);
-							_res.write (_buffer);
-							_res.set_content_from_filename (_asm_path);
-						}
+						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
+						_res.write (_read_from_namespace (_namespace));
+						_res.set_content_from_filename (_namespace);
 					}
-				} else if (_req.m_path.left_is ("/monitor/") && m_monitor != null) {
-					if (_req.m_path == "/monitor/data.json") {
-						_res.write (m_monitor.get_json (_req.get_value<int> ("count", false)));
-						//_res.set_content_from_filename (_req.m_path);
-					}
+					//} else if (_req.m_path.left_is ("monitor/") && m_monitor != null) {
+					//	if (_req.m_path == "monitor/data.json") {
+					//		_res.write (m_monitor.get_json (_req.get_value<int> ("count", false)));
+					//		//_res.set_content_from_filename (_req.m_path);
+					//	}
 				} else if (_req.m_option == "GET") {
-					bool _is_404 = (_req.m_path == "/404.html");
-					if (_is_404) {
-						_res.m_status_code = 404;
-					} else if (_req.m_path == "/") {
-						if (File.Exists ($"{m_wwwroot}index.html")) {
-							_req.m_path = "/index.html";
-						} else if (File.Exists ($"{m_wwwroot}index.htm")) {
-							_req.m_path = "/index.htm";
-						}
-					}
-					_req.m_path = $"{m_wwwroot}{_req.m_path.Substring (1)}";
-					if (File.Exists (_req.m_path)) {
-						_res.write_file (_req.m_path);
-					} else if (_is_404) {
-						_res.write ("404 Not Found");
+					byte [] _data = _load_res (_req.m_path);
+					if (_data != null) {
+						_res.write (_data);
+						_res.set_content_from_filename (_req.m_path);
 					} else {
-						_res.redirect ("404.html");
+						throw new MyHttpException (404);
 					}
+				} else {
+					throw new MyHttpException (404);
 				}
 			} catch (MyHttpException ex) {
-				_res.m_status_code = ex.m_error_num;
-				_error = (_res.m_status_code / 100 != 2);
+				if (ex.m_error_num == 404) {
+					if (_req.m_path == "404.html") {
+						_res.m_status_code = ex.m_error_num;
+						_error = (_res.m_status_code / 100 != 2);
+					} else {
+						_res.redirect ("/404.html");
+					}
+				} else {
+					_res.m_status_code = ex.m_error_num;
+					_error = (_res.m_status_code / 100 != 2);
+				}
 			} catch (Exception ex) {
 				_res.clear ();
 				_res.write (new { result = "failure", content = (ex.GetType ().Name == "Exception" ? ex.Message : ex.ToString ()) }.to_json ());
 				_res.m_status_code = 500;
 				_error = true;
 			}
+			_go_ws &= !_error;
+			_res.m_headers ["Connection"] = "Keep-Alive";
+			_res.m_headers ["Keep-Alive"] = $"timeout={(_go_ws ? 66 : 10)}, max=1000";
 			_req_stream.Write (_res.build_response (_req));
 			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-			return ((_go_ws && !_error), _req.get_header ("X-API-Key"));
+			return (_go_ws, _req.get_header ("X-API-Key"));
 		}
 
 		// loop processing
@@ -185,7 +212,7 @@ namespace SparrowServer {
 								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTRequest] method");
 							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
 							//
-							string _path_prefix = $"/api/{_module_prefix}/{_method.Name}";
+							string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
 							foreach (var _param in _params) {
 								if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
 									continue;
@@ -232,23 +259,19 @@ namespace SparrowServer {
 							Console.WriteLine ("conn start");
 							try {
 								var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
-								using (var _source_stream = _client.GetStream ()) {
-									_source_stream.ReadTimeout = _source_stream.WriteTimeout = 66666;
+								using (var _net_stream = _client.GetStream ()) {
+									_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
 									if (m_pfx != null) {
-										using (var _ssl_stream = new SslStream (_source_stream)) {
+										using (var _ssl_stream = new SslStream (_net_stream)) {
 											_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
-											_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = 66666;
-											//(_static, _error) = _loop_process_http (_ssl_stream, _src_ip);
-											_loop_process_http (_ssl_stream, _src_ip);
+											_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
+											_loop_process_http (_net_stream, _ssl_stream, _src_ip);
 										}
 									} else {
-										//(_static, _error) = _loop_process_http (_source_stream, _src_ip);
-										_loop_process_http (_source_stream, _src_ip);
+										_loop_process_http (_net_stream, null, _src_ip);
 									}
 								}
 							} catch (Exception) {
-								//_static = false;
-								//_error = true;
 							}
 							Console.WriteLine ("conn stop");
 						}
@@ -259,31 +282,89 @@ namespace SparrowServer {
 			}
 		}
 
-		private void _loop_process_http (Stream _stream, string _src_ip) {
-			//int _byte;
-			//while ((_byte = _stream.ReadByte ()) == -1)
-			//	Thread.Sleep (10);
+		private void _loop_process_http (NetworkStream _net_stream, SslStream _ssl_stream, string _src_ip) {
+			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
 			while (true) {
 				var _buf = new byte [1] { 0 };
-				if (_stream.ReadAsync (_buf, 0, 1).Result == 0)
+				CancellationTokenSource _source = new CancellationTokenSource ();
+				Task<int> _read_task = _stream.ReadAsync (_buf, 0, 1, _source.Token);
+				DateTime _dt = DateTime.Now;
+				while ((DateTime.Now - _dt).TotalMilliseconds <= m_alive_http_ms && !_read_task.IsCompleted)
+					Thread.Sleep (10);
+				if ((DateTime.Now - _dt).TotalMilliseconds > m_alive_http_ms) {
+					_source.Cancel ();
 					throw new Exception ("no data");
+				} else if (_read_task.Result == 0) {
+					throw new Exception ("no data");
+				}
 				var (_go_ws, _api_key) = _request_http_once (_stream, _src_ip, _buf [0]);
 				if (_go_ws) {
-					_loop_process_ws (_stream, _src_ip, _api_key);
+					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
+					_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
+					_loop_process_ws (_net_stream, _ssl_stream, _src_ip, _api_key);
 					break;
 				}
 			}
 		}
 
-		private void _loop_process_ws (Stream _stream, string _src_ip, string _api_key) {
+		private void _loop_process_ws (NetworkStream _net_stream, SslStream _ssl_stream, string _src_ip, string _api_key) {
+			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
 			// TODO: process message
 		}
 
+		private byte [] _load_res (string _path_name) {
+			if (!m_res_path.is_null ()) {
+				string _real_path = $"{m_res_path}{_path_name}";
+				if (File.Exists (_real_path))
+					return File.ReadAllBytes (_real_path);
+				if (_real_path.right_is ("/")) {
+					if (File.Exists ($"{_real_path}index.htm"))
+						return File.ReadAllBytes ($"{_real_path}index.htm");
+					if (File.Exists ($"{_real_path}index.html"))
+						return File.ReadAllBytes ($"{_real_path}index.html");
+				}
+			} else if (!m_res_namespace.is_null ()) {
+				string _real_namespace = $"{m_res_namespace}{_path_name.Replace ('/', '.')}";
+				byte [] _data = _read_from_namespace (_real_namespace);
+				if (_data != null)
+					return _data;
+				if (_real_namespace.right_is (".")) {
+					if ((_data = _read_from_namespace ($"{_real_namespace}index.htm")) != null)
+						return _data;
+					if ((_data = _read_from_namespace ($"{_real_namespace}index.html")) != null)
+						return _data;
+				}
+			}
+			throw new MyHttpException (404);
+		}
+
+		private byte [] _read_from_namespace (string _namespace) {
+			using (var _stream = Assembly.GetCallingAssembly ().GetManifestResourceStream (_namespace)) {
+				if (_stream == null)
+					return null;
+				var _buffer = new byte [_stream.Length];
+				_stream.Read (_buffer);
+				return _buffer;
+			}
+		}
+
+		private int m_alive_http_ms = 10000;
+		private int m_alive_websocket_ms = 66000;
+
+		private string m_api_path = "/api/";
 		private Assembly m_assembly = null;
 		private X509Certificate m_pfx = null;
+
+		// swagger doc
+		private string m_doc_path = "/swagger/";
 		private WEBDocInfo m_doc_info = null;
-		private string m_wwwroot = "";
 		private byte [] m_swagger_data = null;
+
+		// monitor
 		private MonitoringManager m_monitor = null;
+
+		// static res
+		private string m_res_path = "";
+		private string m_res_namespace = "";
 	}
 }

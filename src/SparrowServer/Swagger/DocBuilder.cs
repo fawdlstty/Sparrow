@@ -176,12 +176,14 @@ namespace SparrowServer.Swagger {
 							["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },
-								["500"] = new JObject { ["description"] = "fail" },
+								["500"] = new JObject { ["description"] = "failure" },
 							},
 						},
 					};
-					if (_method.m_api_key)
+					if (_method.m_api_key) {
 						m_obj ["paths"] [_key1] [_key2] ["security"] = JArray.Parse ("[{\"ApiKeyAuth\":[]}]");
+						m_obj ["paths"] [_key1] [_key2] ["responses"] ["401"] = new JObject { ["description"] = "Unauthorized" };
+					}
 				}
 			}
 			m_obj ["tags"] = _tags;

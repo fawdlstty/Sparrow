@@ -66,13 +66,17 @@ namespace SparrowServer.HttpProtocol {
 			foreach (var (_key, _val) in m_headers)
 				_data.AddRange ($"{_key}: {_val}\r\n".to_bytes ());
 			_data.AddRange ("\r\n".to_bytes ());
-			_data.AddRange (_cnt_data);
+			if (m_status_code != 200 && _cnt_data.Count == 0) {
+				_data.AddRange (m_codes [m_status_code].to_bytes ());
+			} else {
+				_data.AddRange (_cnt_data);
+			}
 			return _data.ToArray ();
 		}
 
 		private static Dictionary<int, string> m_codes = new Dictionary<int, string> {
 			[100] = "Continue",
-			[101] = "Switching Protocols",
+			[101] = "Websocket Protocol",
 			[102] = "Processing",
 			[200] = "OK",
 			[201] = "Created",

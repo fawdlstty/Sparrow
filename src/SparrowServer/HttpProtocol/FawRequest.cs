@@ -76,7 +76,7 @@ namespace SparrowServer.HttpProtocol {
 				throw new MyHttpException (505);
 			m_option = _header_line [0];
 			m_url = _header_line [1];
-			m_path = m_url.simplify_path ();
+			m_path = m_url.simplify_path ().mid (1);
 			int _p = m_path.IndexOfAny (new char [] { '?', '#' });
 			if (_p > 0)
 				m_path = m_path.Substring (0, _p);
