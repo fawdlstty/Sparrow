@@ -109,6 +109,7 @@ namespace SparrowServer {
 					_res.m_headers [""] = "";
 					_res.m_headers [""] = "";
 					// TODO: check and reply
+					// https://www.jianshu.com/p/f666da1b1835
 				} else if (!m_api_path.is_null () && _req.m_path.left_is (m_api_path.mid (1))) {
 					_static = false;
 					bool _proc = false;
