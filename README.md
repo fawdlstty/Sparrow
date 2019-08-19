@@ -76,7 +76,9 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
-Websocket的支持（ws规则的判定，协议的处理）
+Websocket（condition/protocol）
+
+HTTP客户端、代理（正向、反向、匿名，受控）
 
 数据检查
 

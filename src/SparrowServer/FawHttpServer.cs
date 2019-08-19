@@ -88,7 +88,6 @@ namespace SparrowServer {
 
 		// processing a request
 		private (bool, string) _request_http_once (Stream _req_stream, string _src_ip, int _first_byte = -1) {
-			//https://referencesource.microsoft.com/#System/net/System/Net/HttpListener.cs,671908476fdfe5be
 			bool _static = true, _error = false, _go_ws = false;
 			var _request_begin = DateTime.Now;
 
@@ -103,6 +102,8 @@ namespace SparrowServer {
 				if (_req.m_option == "HEAD") {
 					throw new MyHttpException (204);
 				} else if (_req.get_header ("Upgrade").ToLower ().IndexOf ("websocket") >= 0) {
+					if (_req.get_header ("Connection").ToLower () != "upgrade")
+						throw new MyHttpException (502);
 					_go_ws = true;
 					_res.m_status_code = 101;
 					_res.m_headers [""] = "";
