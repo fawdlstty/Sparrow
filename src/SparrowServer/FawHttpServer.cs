@@ -94,7 +94,7 @@ namespace SparrowServer {
 			FawRequest _req = new FawRequest ();
 			FawResponse _res = new FawResponse ();
 			try {
-				_req.parse (_req_stream, _src_ip, _first_byte);
+				_req.deserialize (_req_stream, _src_ip, _first_byte);
 				_req._check_int = m_check_int;
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
@@ -104,11 +104,19 @@ namespace SparrowServer {
 				} else if (_req.get_header ("Upgrade").ToLower ().IndexOf ("websocket") >= 0) {
 					if (_req.get_header ("Connection").ToLower () != "upgrade")
 						throw new MyHttpException (502);
+					var _ws_types = _req.get_header ("Sec-WebSocket-Protocol").ToLower ().Replace (" ", "").split_list (true, ',');
+					if (_ws_types.IndexOf ("chat") == -1)
+						throw new MyHttpException (501);
+					if (_req.get_header ("Sec-WebSocket-Version") != "13")
+						throw new MyHttpException (501);
+					//
 					_go_ws = true;
 					_res.m_status_code = 101;
-					_res.m_headers [""] = "";
-					_res.m_headers [""] = "";
-					_res.m_headers [""] = "";
+					_res.m_headers ["Origin"] = "";
+					_res.m_headers ["Sec-WebSocket-Accept"] = $"{_req.get_header ("Sec-WebSocket-Key")}258EAFA5-E914-47DA-95CA-C5AB0DC85B11".to_bytes ().sha1_encode ().base64_encode ();
+					_res.m_headers ["Sec-WebSocket-Version"] = "13";
+					_res.m_headers ["Sec-WebSocket-Protocol"] = "chat.";
+					_res.m_headers ["Sec-WebSocket-Extensions"] = "";
 					// TODO: check and reply
 					// https://www.jianshu.com/p/f666da1b1835
 				} else if (!m_api_path.is_null () && _req.m_path.left_is (m_api_path.mid (1))) {

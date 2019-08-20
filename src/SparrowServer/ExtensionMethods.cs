@@ -543,6 +543,13 @@ namespace SparrowServer {
 		// base64 解码 arr
 		public static byte [] base64_decode_arr (this string s) { return Convert.FromBase64String (s); }
 
+		// sha1 转码
+		public static byte [] sha1_encode (this byte [] b) {
+			using (SHA1 _sha1 = new SHA1CryptoServiceProvider ()) {
+				return _sha1.ComputeHash (b);
+			}
+		}
+
 		// 显示对象数组
 		public static string join (this long [] o, string rep = ",") {
 			if (o == null || o.Length == 0)

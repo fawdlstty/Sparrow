@@ -8,6 +8,8 @@ using System.Text;
 using System.Web;
 
 namespace SparrowServer.HttpProtocol {
+	public enum ProxyType { None, Transparent, Anonymous }
+
 	public class FawRequest {
 		public string m_version = "";
 		public string m_ip = "";
@@ -15,6 +17,7 @@ namespace SparrowServer.HttpProtocol {
 		public string m_option = "";
 		public string m_url = "";
 		public string m_path = "";
+		public List<byte> m_src_content = new List<byte> ();
 		public Dictionary<string, string> m_headers = new Dictionary<string, string> (StringComparer.OrdinalIgnoreCase);
 		public Dictionary<string, string> m_gets = new Dictionary<string, string> ();
 		public Dictionary<string, string> m_posts = new Dictionary<string, string> ();
@@ -63,7 +66,7 @@ namespace SparrowServer.HttpProtocol {
 			}
 		}
 
-		public void parse (Stream _req_stream, string _src_ip, int _first_byte = -1) {
+		public void deserialize (Stream _req_stream, string _src_ip, int _first_byte = -1) {
 			int _header_max = 100 * 1024;
 			var _header_line = _read_line (_req_stream, ref _header_max, _first_byte).split (true, ' ');
 			if (_header_line.Length < 3)
@@ -113,7 +116,7 @@ namespace SparrowServer.HttpProtocol {
 						_cnt_data = _cnt_data.deflate_decompress (5 * 1024 * 1024);
 					}
 				}
-				string _content_type = m_headers.ContainsKey ("Content-Type") ? m_headers ["Content-Type"] : "";
+				string _content_type = get_header ("Content-Type");
 				if (_content_type.left_is ("multipart/form-data;")) {
 					string [] values = _content_type.Split (';').Skip (1).ToArray ();
 					string boundary = string.Join (";", values).Replace ("boundary=", "").Trim ();
@@ -183,6 +186,51 @@ namespace SparrowServer.HttpProtocol {
 			} else {
 				m_agent_ip = "";
 				m_ip = _src_ip;
+			}
+		}
+
+		public void serialize (Stream _req_stream, ProxyType _type) {
+			_req_stream.Write ($"{m_option} {m_url} {m_version}\r\n".to_bytes ());
+			foreach (var (_key, _val) in m_headers) {
+				if (_key.ToLower () == "x-real-ip") {
+					if (_type == ProxyType.Transparent) {
+						_req_stream.Write ($"{_key}: {m_ip}\r\n".to_bytes ());
+						continue;
+					} else if (_type == ProxyType.Anonymous) {
+						continue;
+					}
+				}
+				_req_stream.Write ($"{_key}: {_val}\r\n".to_bytes ());
+			}
+			_req_stream.Write ($"\r\n".to_bytes ());
+			string _content_type = get_header ("Content-Type");
+			if (_content_type.left_is ("multipart/form-data;")) {
+				string _boundary = _content_type.mid ("boundary=");
+				foreach (var (_key, _val) in m_posts) {
+					_req_stream.Write ($"--{_boundary}\r\n".to_bytes ());
+					_req_stream.Write ($"Content-Disposition: name=\"{HttpUtility.HtmlEncode (_key)}\"\r\n\r\n{_val}\r\n".to_bytes ());
+				}
+				foreach (var (_key, (_file, _val)) in m_files) {
+					_req_stream.Write ($"--{_boundary}\r\n".to_bytes ());
+					_req_stream.Write ($"Content-Disposition: name=\"{HttpUtility.HtmlEncode (_key)}\" filename=\"{HttpUtility.HtmlEncode (_file)}\"\r\n\r\n{_val}\r\n".to_bytes ());
+				}
+				_req_stream.Write ($"--{_boundary}--".to_bytes ());
+			} else if (_content_type == "application/json") {
+				JObject _o = m_posts.json ();
+				_req_stream.Write (_o.to_str ().to_bytes ());
+			} else if (_content_type == "application/x-www-form-urlencoded") {
+				bool _first = true;
+				foreach (var (_key, _val) in m_posts) {
+					if (_first) {
+						_first = false;
+					} else {
+						_req_stream.Write ("&".to_bytes ());
+					}
+					_req_stream.Write ($"{HttpUtility.HtmlEncode (_key)}={HttpUtility.HtmlEncode (_val)}".to_bytes ());
+				}
+			} else {
+				// xml or others content
+				throw new NotImplementedException ();
 			}
 		}
 
