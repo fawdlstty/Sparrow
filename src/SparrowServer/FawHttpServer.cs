@@ -95,13 +95,12 @@ namespace SparrowServer {
 						throw new MyHttpException (501);
 					_ws_module = _req.m_path;
 					_res.m_status_code = 101;
-					_res.m_headers ["Origin"] = "";
 					_res.m_headers ["Sec-WebSocket-Accept"] = $"{_req.get_header ("Sec-WebSocket-Key")}258EAFA5-E914-47DA-95CA-C5AB0DC85B11".to_bytes ().sha1_encode ().base64_encode ();
 					_res.m_headers ["Sec-WebSocket-Version"] = "13";
+					//_res.m_headers ["Origin"] = "";
 					//_res.m_headers ["Sec-WebSocket-Protocol"] = "chat.";
 					//_res.m_headers ["Sec-WebSocket-Extensions"] = "";
 					// TODO: check and reply
-					// https://www.jianshu.com/p/f666da1b1835
 				} else if (!m_api_path.is_null () && _req.m_path.left_is (m_api_path.mid (1))) {
 					_static = false;
 					if (m_api_handlers.ContainsKey ($"{_req.m_option} /{_req.m_path}")) {
@@ -159,17 +158,17 @@ namespace SparrowServer {
 			_res.m_headers ["Keep-Alive"] = $"timeout={(_go_ws ? 66 : 10)}, max=1000";
 			_req_stream.Write (_res.build_response (_req));
 			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-			return (_go_ws, _ws_module, _req.get_header ("X-API-Key"));
+			return (_go_ws, _ws_module, _req.get_header ("Sec-WebSocket-Key"));
 		}
 
 		// loop processing
 		public void run (ushort port) {
 			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info, (m_pfx == null ? "http" : "https")) : null);
 			foreach (var _module in m_assembly.GetTypes ()) {
-				var _module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
-				if (_module_attr != null) {
+				var _http_module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
+				if (_http_module_attr != null) {
 					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
-					_builder?.add_module (_module.Name, _module_prefix, _module_attr.m_description);
+					_builder?.add_module (_module.Name, _module_prefix, _http_module_attr.m_description);
 					//
 					MethodInfo _jwt_reconnect_func = null;
 					Action<MethodInfo> _process_method = (_method) => {
@@ -230,6 +229,10 @@ namespace SparrowServer {
 							continue;
 						_process_method (_method);
 					}
+				}
+				var _ws_module_attr = _module.GetCustomAttribute (typeof (WSModuleAttribute), true) as WSModuleAttribute;
+				if (_ws_module_attr != null) {
+
 				}
 			}
 			m_swagger_data = _builder?.build ().to_bytes ();
@@ -293,6 +296,7 @@ namespace SparrowServer {
 			// TODO: 创建ws连接对象
 			while (true) {
 				var _buf = new byte [] { 0, 0 };
+				// https://www.jianshu.com/p/f666da1b1835
 				
 			}
 		}
