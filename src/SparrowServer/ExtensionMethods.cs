@@ -532,16 +532,10 @@ namespace SparrowServer {
 		}
 
 		// base64 转码
-		public static string base64_encode (this string s) { return s.to_bytes ().base64_encode (); }
-
-		// base64 转码
 		public static string base64_encode (this byte [] b) { return Convert.ToBase64String (b); }
 
-		// base64 解码
-		public static string base64_decode (this string s) { return s.base64_decode_arr ().to_str (); }
-
 		// base64 解码 arr
-		public static byte [] base64_decode_arr (this string s) { return Convert.FromBase64String (s); }
+		public static byte [] base64_decode (this string s) { return Convert.FromBase64String (s); }
 
 		// sha1 转码
 		public static byte [] sha1_encode (this byte [] b) {

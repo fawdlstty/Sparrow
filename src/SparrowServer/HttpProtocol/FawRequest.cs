@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Web;
 
 namespace SparrowServer.HttpProtocol {
@@ -66,9 +67,9 @@ namespace SparrowServer.HttpProtocol {
 			}
 		}
 
-		public void deserialize (Stream _req_stream, string _src_ip, int _first_byte = -1) {
+		public void deserialize (Stream _req_stream, string _src_ip, CancellationToken _token) {
 			int _header_max = 100 * 1024;
-			var _header_line = _read_line (_req_stream, ref _header_max, _first_byte).split (true, ' ');
+			var _header_line = _read_line (_req_stream, ref _header_max, _token).split (true, ' ');
 			if (_header_line.Length < 3)
 				throw new MyHttpException (400);
 			_header_line [0] = _header_line [0].ToUpper ();
@@ -91,7 +92,7 @@ namespace SparrowServer.HttpProtocol {
 				m_gets.TryAdd (HttpUtility.UrlDecode (_key), HttpUtility.UrlDecode (_val));
 			}
 			while (true) {
-				string _header_group = _read_line (_req_stream, ref _header_max);
+				string _header_group = _read_line (_req_stream, ref _header_max, _token);
 				if (_header_group.is_null ())
 					break;
 				var (_key, _val) = _header_group.split2 (':');
@@ -235,26 +236,22 @@ namespace SparrowServer.HttpProtocol {
 		}
 
 		// 读取一行
-		private static string _read_line (Stream _req_stream, ref int _header_max, int _first_byte = -1) {
+		private static string _read_line (Stream _req_stream, ref int _header_max, CancellationToken _token) {
 			var _bytes = new List<byte> ();
 			int _max_len = 1024;
-			if (_first_byte != -1) {
-				if (--_header_max < 0)
-					throw new MyHttpException (413);
-				_bytes.Add ((byte) _first_byte);
-			}
+			byte [] _chs = new byte [1];
 			while (--_max_len >= 0) {
-				int _ch = _req_stream.ReadByte ();
-				if (_ch == -1) {
-					return _bytes.to_str ();
+				int _count = _req_stream.ReadAsync (_chs, _token).Result;
+				if (_count <= 0) {
+					throw new MyHttpException (0);
 				} else if (--_header_max < 0) {
 					throw new MyHttpException (413);
-				} else if (_ch == 0x0a) {
+				} else if (_chs [0] == 0x0a) {
 					if (_bytes.Count > 0 && _bytes [_bytes.Count - 1] == 0x0d)
 						_bytes.RemoveAt (_bytes.Count - 1);
 					return _bytes.to_str ();
 				}
-				_bytes.Add ((byte) _ch);
+				_bytes.Add (_chs [0]);
 			}
 			throw new MyHttpException (414);
 		}

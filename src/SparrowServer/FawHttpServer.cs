@@ -19,23 +19,6 @@ using SparrowServer.HttpProtocol;
 
 namespace SparrowServer {
 	public class FawHttpServer {
-		//private delegate void RequestHandler (FawRequest _req, FawResponse _res);
-		private Dictionary<string, RequestStruct> m_request_handlers = new Dictionary<string, RequestStruct> ();
-		private void add_handler (string path_prefix, RequestStruct _req_struct) {
-			foreach (var key in m_request_handlers.Keys) {
-				if (key == path_prefix) // key.left_is (path_prefix) || path_prefix.left_is (key)
-					throw new Exception ("Url request address prefix conflict");
-			}
-			m_request_handlers.Add (path_prefix, _req_struct);
-		}
-
-		// data check
-		public Func<string, int, bool, bool> m_check_int { get; set; } = null;
-		public Func<string, long, bool, bool> m_check_long { get; set; } = null;
-		public Func<string, string, bool, bool> m_check_string { get; set; } = null;
-
-
-
 		public FawHttpServer (Assembly assembly, string jwt_secret) {
 			m_assembly = assembly;
 			JWTManager.m_secret = jwt_secret;
@@ -87,14 +70,15 @@ namespace SparrowServer {
 
 
 		// processing a request
-		private (bool, string) _request_http_once (Stream _req_stream, string _src_ip, int _first_byte = -1) {
-			bool _static = true, _error = false, _go_ws = false;
+		private (bool, string, string) _request_http_once (Stream _req_stream, string _src_ip, CancellationToken _token) {
+			bool _static = true, _error = false;
+			string _ws_module = "";
 			var _request_begin = DateTime.Now;
 
 			FawRequest _req = new FawRequest ();
 			FawResponse _res = new FawResponse ();
 			try {
-				_req.deserialize (_req_stream, _src_ip, _first_byte);
+				_req.deserialize (_req_stream, _src_ip, _token);
 				_req._check_int = m_check_int;
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
@@ -109,28 +93,24 @@ namespace SparrowServer {
 						throw new MyHttpException (501);
 					if (_req.get_header ("Sec-WebSocket-Version") != "13")
 						throw new MyHttpException (501);
-					//
-					_go_ws = true;
+					_ws_module = _req.m_path;
 					_res.m_status_code = 101;
 					_res.m_headers ["Origin"] = "";
 					_res.m_headers ["Sec-WebSocket-Accept"] = $"{_req.get_header ("Sec-WebSocket-Key")}258EAFA5-E914-47DA-95CA-C5AB0DC85B11".to_bytes ().sha1_encode ().base64_encode ();
 					_res.m_headers ["Sec-WebSocket-Version"] = "13";
-					_res.m_headers ["Sec-WebSocket-Protocol"] = "chat.";
-					_res.m_headers ["Sec-WebSocket-Extensions"] = "";
+					//_res.m_headers ["Sec-WebSocket-Protocol"] = "chat.";
+					//_res.m_headers ["Sec-WebSocket-Extensions"] = "";
 					// TODO: check and reply
 					// https://www.jianshu.com/p/f666da1b1835
 				} else if (!m_api_path.is_null () && _req.m_path.left_is (m_api_path.mid (1))) {
 					_static = false;
-					bool _proc = false;
-					if (m_request_handlers.ContainsKey ($"{_req.m_option} /{_req.m_path}")) {
-						m_request_handlers [$"{_req.m_option} /{_req.m_path}"].process (_req, _res);
-						_proc = true;
-					} else if (m_request_handlers.ContainsKey ($" /{_req.m_path}")) {
-						m_request_handlers [$" /{_req.m_path}"].process (_req, _res);
-						_proc = true;
-					}
-					if (!_proc)
+					if (m_api_handlers.ContainsKey ($"{_req.m_option} /{_req.m_path}")) {
+						m_api_handlers [$"{_req.m_option} /{_req.m_path}"].process (_req, _res);
+					} else if (m_api_handlers.ContainsKey ($" /{_req.m_path}")) {
+						m_api_handlers [$" /{_req.m_path}"].process (_req, _res);
+					} else {
 						throw new Exception ("Unknown request");
+					}
 				} else if (m_doc_info != null && !m_doc_path.is_null () && _req.m_path.left_is (m_doc_path.mid (1))) {
 					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
 						_res.write (m_swagger_data);
@@ -174,12 +154,12 @@ namespace SparrowServer {
 				_res.m_status_code = 500;
 				_error = true;
 			}
-			_go_ws &= !_error;
+			bool _go_ws = (!_ws_module.is_null ()) && (!_error);
 			_res.m_headers ["Connection"] = "Keep-Alive";
 			_res.m_headers ["Keep-Alive"] = $"timeout={(_go_ws ? 66 : 10)}, max=1000";
 			_req_stream.Write (_res.build_response (_req));
 			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-			return (_go_ws, _req.get_header ("X-API-Key"));
+			return (_go_ws, _ws_module, _req.get_header ("X-API-Key"));
 		}
 
 		// loop processing
@@ -232,7 +212,10 @@ namespace SparrowServer {
 								var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
 								_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
 							}
-							add_handler ($"{_method_attr.Type} {_path_prefix}", new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
+							_path_prefix = $"{_method_attr.Type} {_path_prefix}";
+							if (m_api_handlers.ContainsKey (_path_prefix))
+								throw new Exception ("Url request address prefix conflict");
+							m_api_handlers.Add (_path_prefix, new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
 						}
 					};
 					// process static method
@@ -295,33 +278,35 @@ namespace SparrowServer {
 		private void _loop_process_http (NetworkStream _net_stream, SslStream _ssl_stream, string _src_ip) {
 			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
 			while (true) {
-				var _buf = new byte [1] { 0 };
-				CancellationTokenSource _source = new CancellationTokenSource ();
-				Task<int> _read_task = _stream.ReadAsync (_buf, 0, 1, _source.Token);
-				DateTime _dt = DateTime.Now;
-				while ((DateTime.Now - _dt).TotalMilliseconds <= m_alive_http_ms && !_read_task.IsCompleted)
-					Thread.Sleep (10);
-				if ((DateTime.Now - _dt).TotalMilliseconds > m_alive_http_ms) {
-					_source.Cancel ();
-					throw new Exception ("no data");
-				} else if (_read_task.Result == 0) {
-					throw new Exception ("no data");
-				}
-				var (_go_ws, _api_key) = _request_http_once (_stream, _src_ip, _buf [0]);
+				CancellationTokenSource _source = new CancellationTokenSource (m_alive_http_ms);
+				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source.Token);
 				if (_go_ws) {
 					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
 					_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
-					_loop_process_ws (_net_stream, _ssl_stream, _src_ip, _api_key);
+					_loop_process_ws (_stream, _module, _api_key);
 					break;
 				}
 			}
 		}
 
-		private void _loop_process_ws (NetworkStream _net_stream, SslStream _ssl_stream, string _src_ip, string _api_key) {
-			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
-			// TODO: process message
+		private void _loop_process_ws (Stream _stream, string _module, string _api_key) {
+			// TODO: 创建ws连接对象
+			while (true) {
+				var _buf = new byte [] { 0, 0 };
+				
+			}
 		}
 
+
+
+		private Dictionary<string, RequestStruct> m_api_handlers = new Dictionary<string, RequestStruct> ();
+
+		// data check
+		public Func<string, int, bool, bool> m_check_int { get; set; } = null;
+		public Func<string, long, bool, bool> m_check_long { get; set; } = null;
+		public Func<string, string, bool, bool> m_check_string { get; set; } = null;
+
+		// load resource (from namespace or path)
 		private byte [] _load_res (string _path_name) {
 			if (!m_res_path.is_null ()) {
 				string _real_path = $"{m_res_path}{_path_name}";
@@ -348,6 +333,7 @@ namespace SparrowServer {
 			throw new MyHttpException (404);
 		}
 
+		// load resource from namespace
 		private byte [] _read_from_namespace (string _namespace) {
 			using (var _stream = Assembly.GetCallingAssembly ().GetManifestResourceStream (_namespace)) {
 				if (_stream == null)
