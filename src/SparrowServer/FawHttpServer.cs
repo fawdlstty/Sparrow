@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Web;
 using SparrowServer.Monitor;
 using SparrowServer.HttpProtocol;
+using SparrowServer.WSProtocol;
 
 namespace SparrowServer {
 	public class FawHttpServer {
@@ -44,8 +45,6 @@ namespace SparrowServer {
 			m_res_path = "";
 			m_res_namespace = (_namespace.right_is (".") ? _namespace : $"{_namespace}.");
 		}
-
-
 
 		public void set_log_path (string _log_path = "D:/sparrow/log") {
 			_log_path = _log_path.Replace ('\\', '/');
@@ -181,24 +180,28 @@ namespace SparrowServer {
 						//
 						var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
 						if (_jwt_attrs.Count () > 1) {
-							throw new Exception ("Simultaneous use of multiple HTTP Attribute is not supported");
+							throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
 						}
 						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
+						//
+						if (_method_attrs.Count () + _jwt_attrs.Count () >= 2)
+							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
+						//
 						//
 						var _params = _method.GetParameters ();
 						if (_jwt_type == "Connect") {
 							if (_method.ReturnType != _module)
-								throw new Exception ("Return value in [JWTRequest] method must be current class type");
+								throw new Exception ("Return value in [JWTConnect] method must be current class type");
 							if (!_method.IsStatic)
-								throw new Exception ("[JWTRequest] method must be static");
+								throw new Exception ("[JWTConnect] method must be static");
 							if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
-								throw new Exception ("[JWTRequest] can only have one parameter, and the type of parameter is JObject");
+								throw new Exception ("[JWTConnect] can only have one parameter, and the type of parameter is JObject");
 							if (_jwt_reconnect_func != null)
-								throw new Exception ("[JWTRequest] cannot appear twice in the same module");
+								throw new Exception ("[JWTConnect] cannot appear twice in the same module");
 							_jwt_reconnect_func = _method;
 						} else if (_method_attr != null) {
 							if (!_method.IsStatic && _jwt_reconnect_func == null)
-								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTRequest] method");
+								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
 							_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
 							//
 							string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
@@ -214,7 +217,7 @@ namespace SparrowServer {
 							_path_prefix = $"{_method_attr.Type} {_path_prefix}";
 							if (m_api_handlers.ContainsKey (_path_prefix))
 								throw new Exception ("Url request address prefix conflict");
-							m_api_handlers.Add (_path_prefix, new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
+							m_api_handlers.Add (_path_prefix, new RequestStruct ($"{_module.Name}.{_method.Name}", _method, _jwt_reconnect_func, _jwt_type));
 						}
 					};
 					// process static method
@@ -232,7 +235,66 @@ namespace SparrowServer {
 				}
 				var _ws_module_attr = _module.GetCustomAttribute (typeof (WSModuleAttribute), true) as WSModuleAttribute;
 				if (_ws_module_attr != null) {
-
+					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
+					_builder?.add_module ($"{_module.Name}_ws", _module_prefix, _ws_module_attr.m_description);
+					//
+					ConnectStruct _connect = new ConnectStruct (_module.Name, _module);
+					foreach (var _method in _module.GetMethods ()) {
+						var _method_attrs = (from p in _method.GetCustomAttributes () where p is WSMethodAttribute select p as WSMethodAttribute);
+						if (_method_attrs.Count () > 1) {
+							throw new Exception ("Simultaneous use of multiple WSMethod Attribute is not supported");
+						}
+						var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
+						//
+						var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
+						if (_jwt_attrs.Count () > 1) {
+							throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
+						}
+						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
+						//
+						if (_method_attrs.Count () + _jwt_attrs.Count () >= 2)
+							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
+						//
+						//
+						if (_jwt_type == "PureConnect") {
+							// TODO
+						} else if (_jwt_type == "Connect") {
+							// TODO
+						} else {
+							// TODO
+						}
+					}
+					//	var _params = _method.GetParameters ();
+					//	if (_jwt_type == "Connect") {
+					//		if (_method.ReturnType != _module)
+					//			throw new Exception ("Return value in [JWTConnect] method must be current class type");
+					//		if (!_method.IsStatic)
+					//			throw new Exception ("[JWTConnect] method must be static");
+					//		if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
+					//			throw new Exception ("[JWTConnect] can only have one parameter, and the type of parameter is JObject");
+					//		if (_jwt_reconnect_func != null)
+					//			throw new Exception ("[JWTConnect] cannot appear twice in the same module");
+					//		_jwt_reconnect_func = _method;
+					//	} else if (_method_attr != null) {
+					//		if (!_method.IsStatic && _jwt_reconnect_func == null)
+					//			throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
+					//		_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
+					//		//
+					//		string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
+					//		foreach (var _param in _params) {
+					//			if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
+					//				continue;
+					//			if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
+					//				continue;
+					//			var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
+					//			var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
+					//			_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
+					//		}
+					//		_path_prefix = $"{_method_attr.Type} {_path_prefix}";
+					//		if (m_api_handlers.ContainsKey (_path_prefix))
+					//			throw new Exception ("Url request address prefix conflict");
+					//		m_api_handlers.Add (_path_prefix, new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
+					//	}
 				}
 			}
 			m_swagger_data = _builder?.build ().to_bytes ();
@@ -304,6 +366,7 @@ namespace SparrowServer {
 
 
 		private Dictionary<string, RequestStruct> m_api_handlers = new Dictionary<string, RequestStruct> ();
+		private Dictionary<string, ConnectStruct> m_ws_handlers = new Dictionary<string, ConnectStruct> ();
 
 		// data check
 		public Func<string, int, bool, bool> m_check_int { get; set; } = null;

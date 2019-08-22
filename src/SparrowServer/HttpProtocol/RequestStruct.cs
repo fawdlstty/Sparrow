@@ -8,16 +8,17 @@ using System.Text;
 using System.Threading.Tasks;
 using SparrowServer.HttpProtocol;
 
-namespace SparrowServer {
+namespace SparrowServer.HttpProtocol {
 	internal class RequestStruct {
-		public RequestStruct (MethodInfo _method, MethodInfo _auth_method, string _jwt_type) {
+		public RequestStruct (string _name, MethodInfo _method, MethodInfo _auth_method, string _jwt_type) {
+			m_name = _name;
 			m_method = _method;
 			m_auth_method = _auth_method;
 			m_jwt_type = _jwt_type;
 			if (m_jwt_type == "Gen") {
 				(JObject, DateTime) _jwt_gen_ret = (null, DateTime.Now);
 				if (_jwt_gen_ret.GetType () != _method.ReturnType)
-					throw new Exception ("[JWTGen] method return type must be (JObject, DateTime)");
+					throw new Exception ($"{m_name}: [JWTGen] method return type must be (JObject, DateTime)");
 			}
 			foreach (var _param in m_method.GetParameters ()) {
 				if (_param.ParameterType == typeof (FawRequest)) {
@@ -67,7 +68,7 @@ namespace SparrowServer {
 								_params [i] = _req.m_option;
 								break;
 							default:
-								throw new Exception ("Request parameter types that are not currently supported");
+								throw new Exception ($"{m_name}: Request parameter types that are not currently supported");
 						}
 					}
 				}
@@ -108,6 +109,7 @@ namespace SparrowServer {
 			}
 		}
 
+		private string m_name = "";
 		private MethodInfo m_method = null, m_auth_method = null;
 		private List<(Type, string)> m_params = new List<(Type, string)> ();
 		private string m_jwt_type = "";

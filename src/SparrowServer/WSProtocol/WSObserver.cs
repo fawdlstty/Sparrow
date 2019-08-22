@@ -12,7 +12,7 @@ namespace SparrowServer.WSProtocol {
 		public virtual void OnClose () {}
 
 		public void send (byte [] _data) {
-
+			// TODO
 		}
 
 		public void send (string _data) {

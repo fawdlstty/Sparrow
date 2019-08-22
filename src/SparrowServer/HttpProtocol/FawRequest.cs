@@ -89,14 +89,14 @@ namespace SparrowServer.HttpProtocol {
 				var (_key, _val) = _get_group.split2 ('=');
 				if (_key.is_null ())
 					continue;
-				m_gets.TryAdd (HttpUtility.UrlDecode (_key), HttpUtility.UrlDecode (_val));
+				m_gets.TryAdd (_key.url_decode (), _val.url_decode ());
 			}
 			while (true) {
 				string _header_group = _read_line (_req_stream, ref _header_max, _token);
 				if (_header_group.is_null ())
 					break;
 				var (_key, _val) = _header_group.split2 (':');
-				m_headers.TryAdd (HttpUtility.UrlDecode (_key).Trim (), HttpUtility.UrlDecode (_val).Trim ());
+				m_headers.TryAdd (_key.url_decode ().Trim (), _val.url_decode ().Trim ());
 			}
 			if (m_headers.ContainsKey ("Content-Length")) {
 				int _cnt_len = m_headers ["Content-Length"].to_int ();
@@ -168,13 +168,13 @@ namespace SparrowServer.HttpProtocol {
 					if (post_data [0] == '{') {
 						JObject obj = JObject.Parse (post_data);
 						foreach (var (key, val) in obj)
-							m_posts [HttpUtility.UrlDecode (key)] = HttpUtility.UrlDecode (val.ToString ());
+							m_posts [key.url_decode ()] = val.ToString ().url_decode ();
 					} else {
 						string [] pairs = post_data.Split (new char [] { '&' }, StringSplitOptions.RemoveEmptyEntries);
 						foreach (string pair in pairs) {
 							int p = pair.IndexOf ('=');
 							if (p > 0)
-								m_posts [HttpUtility.UrlDecode (pair.Substring (0, p))] = HttpUtility.UrlDecode (pair.Substring (p + 1));
+								m_posts [pair.Substring (0, p).url_decode ()] = pair.Substring (p + 1).url_decode ();
 						}
 					}
 				}
@@ -209,11 +209,11 @@ namespace SparrowServer.HttpProtocol {
 				string _boundary = _content_type.mid ("boundary=");
 				foreach (var (_key, _val) in m_posts) {
 					_req_stream.Write ($"--{_boundary}\r\n".to_bytes ());
-					_req_stream.Write ($"Content-Disposition: name=\"{HttpUtility.HtmlEncode (_key)}\"\r\n\r\n{_val}\r\n".to_bytes ());
+					_req_stream.Write ($"Content-Disposition: name=\"{_key.url_encode ()}\"\r\n\r\n{_val}\r\n".to_bytes ());
 				}
 				foreach (var (_key, (_file, _val)) in m_files) {
 					_req_stream.Write ($"--{_boundary}\r\n".to_bytes ());
-					_req_stream.Write ($"Content-Disposition: name=\"{HttpUtility.HtmlEncode (_key)}\" filename=\"{HttpUtility.HtmlEncode (_file)}\"\r\n\r\n{_val}\r\n".to_bytes ());
+					_req_stream.Write ($"Content-Disposition: name=\"{_key.url_encode ()}\" filename=\"{_file.url_encode ()}\"\r\n\r\n{_val}\r\n".to_bytes ());
 				}
 				_req_stream.Write ($"--{_boundary}--".to_bytes ());
 			} else if (_content_type == "application/json") {
@@ -227,7 +227,7 @@ namespace SparrowServer.HttpProtocol {
 					} else {
 						_req_stream.Write ("&".to_bytes ());
 					}
-					_req_stream.Write ($"{HttpUtility.HtmlEncode (_key)}={HttpUtility.HtmlEncode (_val)}".to_bytes ());
+					_req_stream.Write ($"{_key.url_encode ()}={_val.url_encode ()}".to_bytes ());
 				}
 			} else {
 				// xml or others content

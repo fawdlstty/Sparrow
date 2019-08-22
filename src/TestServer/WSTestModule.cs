@@ -20,7 +20,7 @@ namespace TestServer {
 		}
 
 		[WSMethod]
-		public static string on_hello () {
+		public string on_hello () {
 			return "hello websocket";
 		}
 
