@@ -76,7 +76,8 @@ namespace SparrowServer.HttpProtocol {
 				//if (_ret.GetType () == typeof (Task<>)) // 始终为False
 				if (_ret is Task _t) {
 					if (_ret.GetType () != typeof (Task)) {
-						_ret = _ret.GetType ().InvokeMember ("Result", BindingFlags.GetProperty, null, _ret, null);
+						//_ret = _ret.GetType ().InvokeMember ("Result", BindingFlags.GetProperty, null, _ret, null);
+						_ret = (_ret as dynamic).Result;
 					} else {
 						_t.Wait ();
 						_ret = null;

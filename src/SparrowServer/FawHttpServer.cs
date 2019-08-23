@@ -69,7 +69,7 @@ namespace SparrowServer {
 
 
 		// processing a request
-		private (bool, string, string) _request_http_once (Stream _req_stream, string _src_ip, CancellationToken _token) {
+		private (bool, string, string) _request_http_once (Stream _req_stream, string _src_ip, CancellationTokenSource _source) {
 			bool _static = true, _error = false;
 			string _ws_module = "";
 			var _request_begin = DateTime.Now;
@@ -77,7 +77,7 @@ namespace SparrowServer {
 			FawRequest _req = new FawRequest ();
 			FawResponse _res = new FawResponse ();
 			try {
-				_req.deserialize (_req_stream, _src_ip, _token);
+				_req.deserialize (_req_stream, _src_ip, _source, m_alive_http_ms);
 				_req._check_int = m_check_int;
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
@@ -257,44 +257,16 @@ namespace SparrowServer {
 						//
 						//
 						if (_jwt_type == "PureConnect") {
-							// TODO
+							_connect.add_pure_auth_method (_method);
 						} else if (_jwt_type == "Connect") {
-							// TODO
-						} else {
-							// TODO
+							_connect.add_auth_method (_method);
+						} else if (_method_attrs.Count () > 0) {
+							_connect.add_ws_method (_method);
 						}
 					}
-					//	var _params = _method.GetParameters ();
-					//	if (_jwt_type == "Connect") {
-					//		if (_method.ReturnType != _module)
-					//			throw new Exception ("Return value in [JWTConnect] method must be current class type");
-					//		if (!_method.IsStatic)
-					//			throw new Exception ("[JWTConnect] method must be static");
-					//		if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
-					//			throw new Exception ("[JWTConnect] can only have one parameter, and the type of parameter is JObject");
-					//		if (_jwt_reconnect_func != null)
-					//			throw new Exception ("[JWTConnect] cannot appear twice in the same module");
-					//		_jwt_reconnect_func = _method;
-					//	} else if (_method_attr != null) {
-					//		if (!_method.IsStatic && _jwt_reconnect_func == null)
-					//			throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
-					//		_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
-					//		//
-					//		string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
-					//		foreach (var _param in _params) {
-					//			if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
-					//				continue;
-					//			if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
-					//				continue;
-					//			var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
-					//			var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
-					//			_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
-					//		}
-					//		_path_prefix = $"{_method_attr.Type} {_path_prefix}";
-					//		if (m_api_handlers.ContainsKey (_path_prefix))
-					//			throw new Exception ("Url request address prefix conflict");
-					//		m_api_handlers.Add (_path_prefix, new RequestStruct (_method, _jwt_reconnect_func, _jwt_type));
-					//	}
+					if (m_ws_handlers.ContainsKey (_module.Name))
+						throw new Exception ($"{_module_prefix}: Websocket url request address is conflict");
+					m_ws_handlers.Add (_module_prefix, _connect);
 				}
 			}
 			m_swagger_data = _builder?.build ().to_bytes ();
@@ -344,7 +316,7 @@ namespace SparrowServer {
 			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
 			while (true) {
 				CancellationTokenSource _source = new CancellationTokenSource (m_alive_http_ms);
-				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source.Token);
+				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source);
 				if (_go_ws) {
 					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
 					_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
@@ -356,10 +328,18 @@ namespace SparrowServer {
 
 		private void _loop_process_ws (Stream _stream, string _module, string _api_key) {
 			// TODO: 创建ws连接对象
+			var _conn_struct = m_ws_handlers [_module];
+			var _observer = (_api_key.is_null () ? _conn_struct.get_pure_connection () : _conn_struct.get_jwt_connection (_api_key));
 			while (true) {
 				var _buf = new byte [] { 0, 0 };
 				// https://www.jianshu.com/p/f666da1b1835
-				
+				CancellationTokenSource _source = new CancellationTokenSource (m_alive_websocket_ms);
+				if (_stream.ReadAsync (_buf, _source.Token).Result < 2)
+					break;
+				_source.CancelAfter (m_alive_websocket_ms);
+				bool _is_eof = (_buf [0] & 0x80) > 0;
+				if ((_buf [0] & 0x70) > 0)
+					throw new Exception ("RSV1~RSV3 is not 0");
 			}
 		}
 

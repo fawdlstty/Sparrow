@@ -44,10 +44,11 @@ namespace SparrowServer.WSProtocol {
 			return m_pure_auth_method.Invoke (null, new object [] {}) as WSObserver;
 		}
 
-		public WSObserver get_jwt_connection (string _token) {
+		public WSObserver get_jwt_connection (string _api_key) {
 			if (m_auth_method == null)
 				throw new MyHttpException (403);
-			return m_auth_method.Invoke (null, new object [] {  }) as WSObserver;
+			var _jwt_o = JWTManager.Check (_api_key);
+			return m_auth_method.Invoke (null, new object [] { _jwt_o }) as WSObserver;
 		}
 
 		public void add_ws_method (MethodInfo _ws_method) {

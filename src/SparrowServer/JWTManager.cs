@@ -20,9 +20,9 @@ namespace SparrowServer {
 			return _builder.Build ();
 		}
 
-		public static JObject Check (string _token) {
+		public static JObject Check (string _api_key) {
 			try {
-				var _json = new JwtBuilder ().WithSecret (m_secret).MustVerifySignature ().Decode (_token);
+				var _json = new JwtBuilder ().WithSecret (m_secret).MustVerifySignature ().Decode (_api_key);
 				var _o = JObject.Parse (_json);
 				_o.Remove ("exp");
 				return _o;

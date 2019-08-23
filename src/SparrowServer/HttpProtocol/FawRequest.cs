@@ -67,9 +67,10 @@ namespace SparrowServer.HttpProtocol {
 			}
 		}
 
-		public void deserialize (Stream _req_stream, string _src_ip, CancellationToken _token) {
+		public void deserialize (Stream _req_stream, string _src_ip, CancellationTokenSource _source, int _alive_http_ms) {
 			int _header_max = 100 * 1024;
-			var _header_line = _read_line (_req_stream, ref _header_max, _token).split (true, ' ');
+			var _header_line = _read_line (_req_stream, ref _header_max, _source.Token).split (true, ' ');
+			_source.CancelAfter (_alive_http_ms);
 			if (_header_line.Length < 3)
 				throw new MyHttpException (400);
 			_header_line [0] = _header_line [0].ToUpper ();
@@ -92,7 +93,7 @@ namespace SparrowServer.HttpProtocol {
 				m_gets.TryAdd (_key.url_decode (), _val.url_decode ());
 			}
 			while (true) {
-				string _header_group = _read_line (_req_stream, ref _header_max, _token);
+				string _header_group = _read_line (_req_stream, ref _header_max, _source.Token);
 				if (_header_group.is_null ())
 					break;
 				var (_key, _val) = _header_group.split2 (':');
