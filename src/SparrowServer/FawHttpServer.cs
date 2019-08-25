@@ -111,7 +111,8 @@ namespace SparrowServer {
 					}
 				} else if (m_doc_info != null && !m_doc_path.is_null () && _req.m_path.left_is (m_doc_path.mid (1))) {
 					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
-						_res.write (m_swagger_data);
+						string _host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port}" : _req.get_header ("Host"));
+						_res.write (m_swagger_data.Replace ("%-faq-host-%", _host));
 						_res.set_content_from_filename (_req.m_path);
 					} else if (m_doc_path != "/swagger/" && _req.m_path.mid (m_doc_path.Length - 1) == "index.html") {
 						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
@@ -167,6 +168,7 @@ namespace SparrowServer {
 
 		// loop processing
 		public void run (ushort port) {
+			m_port = port;
 			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info, (m_pfx == null ? "http" : "https")) : null);
 			foreach (var _module in m_assembly.GetTypes ()) {
 				var _http_module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
@@ -274,7 +276,7 @@ namespace SparrowServer {
 					m_ws_handlers.Add (_module_prefix, _connect);
 				}
 			}
-			m_swagger_data = _builder?.build ().to_bytes ();
+			m_swagger_data = _builder?.build ();
 			//
 			new Thread (() => {
 				while (true) {
@@ -408,6 +410,8 @@ namespace SparrowServer {
 			}
 		}
 
+		private ushort m_port = 80;
+
 		private int m_alive_http_ms = 10000;
 		private int m_alive_websocket_ms = 66000;
 
@@ -418,7 +422,7 @@ namespace SparrowServer {
 		// swagger doc
 		private string m_doc_path = "/swagger/";
 		private WEBDocInfo m_doc_info = null;
-		private byte [] m_swagger_data = null;
+		private string m_swagger_data = "";
 
 		// monitor
 		private MonitoringManager m_monitor = null;

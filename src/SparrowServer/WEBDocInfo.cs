@@ -7,7 +7,5 @@ namespace SparrowServer {
 		public string DocName		= "";
 		public string Version		= "";
 		public string Description	= "";
-		//public string Contact		= "";
-		public string Host			= "";
 	}
 }
