@@ -114,8 +114,9 @@ namespace SparrowServer {
 						string _host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port}" : _req.get_header ("Host"));
 						_res.write (m_swagger_data.Replace ("%-faq-host-%", _host));
 						_res.set_content_from_filename (_req.m_path);
-					} else if (m_doc_path != "/swagger/" && _req.m_path.mid (m_doc_path.Length - 1) == "index.html") {
+					} else if (m_doc_path != "/swagger/" && (_req.m_path == (m_doc_path.mid (1)) || _req.m_path.mid (m_doc_path.Length - 1) == "index.html")) {
 						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
+						_namespace = (_namespace.right_is (".") ? $"{_namespace}index.html" : _namespace);
 						string _data = _read_from_namespace (_namespace).to_str ();
 						_res.write (_data.Replace ("/swagger/", m_doc_path));
 						_res.set_content_from_filename (_namespace);

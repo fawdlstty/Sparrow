@@ -756,7 +756,7 @@ namespace SparrowServer {
 			if (_items [0] == ".")
 				_items.RemoveAt (0);
 			// 去除当前路径
-			for (int i = 0; i < _items.Count; ++i) {
+			for (int i = 0; i < _items.Count - 1; ++i) {
 				if (_items [i] == ".") {
 					_items.RemoveAt (i);
 					--i;
@@ -771,6 +771,7 @@ namespace SparrowServer {
 				}
 			}
 			// 拼接
+			_items [_items.Count - 1] = (_items [_items.Count - 1] == "." ? "" : _items [_items.Count - 1]);
 			_items.Insert (0, "");
 			if (_items.Count == 1)
 				_items.Insert (0, "");
