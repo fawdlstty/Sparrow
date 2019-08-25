@@ -94,6 +94,14 @@ namespace SparrowServer.Swagger {
 		}
 
 		public void add_param (string _module_name, string _request_type, string _method_name, string _param_name, string _param_type, string _description = "") {
+			var _convert_type = new Dictionary<string, string> () {
+				["Boolean"] = "boolean",
+				["Int32"] = "integer",
+				["Int64"] = "integer",
+				["String"] = "string",
+			};
+			if (_convert_type.ContainsKey (_param_type))
+				_param_type = _convert_type [_param_type];
 			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
 				throw new Exception ("Name format error");
 			for (int i = m_modules.Count - 1; i >= 0; --i) {
@@ -171,7 +179,11 @@ namespace SparrowServer.Swagger {
 							["name"] = _param.m_name,
 							["description"] = _param.m_description,
 							["required"] = true,
-							["type"] = _param.m_type,
+							//["type"] = _param.m_type,
+							//
+							//["style"] = "form",
+							//["explode"] = "false",
+							["schema"] = new JObject { ["type"] = _param.m_type },
 						});
 					}
 					m_obj ["paths"] [_key1] = new JObject {
