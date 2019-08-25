@@ -67,10 +67,9 @@ namespace SparrowServer.HttpProtocol {
 			}
 		}
 
-		public void deserialize (Stream _req_stream, string _src_ip, CancellationTokenSource _source, int _alive_http_ms) {
+		public void deserialize (Stream _req_stream, string _src_ip, CancellationToken _token, byte _first_byte = 0) {
 			int _header_max = 100 * 1024;
-			var _header_line = _read_line (_req_stream, ref _header_max, _source.Token).split (true, ' ');
-			_source.CancelAfter (_alive_http_ms);
+			var _header_line = _read_line (_req_stream, ref _header_max, _token, _first_byte).split (true, ' ');
 			if (_header_line.Length < 3)
 				throw new MyHttpException (400);
 			_header_line [0] = _header_line [0].ToUpper ();
@@ -93,7 +92,7 @@ namespace SparrowServer.HttpProtocol {
 				m_gets.TryAdd (_key.url_decode (), _val.url_decode ());
 			}
 			while (true) {
-				string _header_group = _read_line (_req_stream, ref _header_max, _source.Token);
+				string _header_group = _read_line (_req_stream, ref _header_max, _token);
 				if (_header_group.is_null ())
 					break;
 				var (_key, _val) = _header_group.split2 (':');
@@ -237,14 +236,18 @@ namespace SparrowServer.HttpProtocol {
 		}
 
 		// 读取一行
-		private static string _read_line (Stream _req_stream, ref int _header_max, CancellationToken _token) {
+		private static string _read_line (Stream _req_stream, ref int _header_max, CancellationToken _token, byte _first_byte = 0) {
 			var _bytes = new List<byte> ();
 			int _max_len = 1024;
 			byte [] _chs = new byte [1];
+			if (_first_byte != 0) {
+				--_max_len;
+				_bytes.Add (_first_byte);
+			}
 			while (--_max_len >= 0) {
 				int _count = _req_stream.ReadAsync (_chs, _token).Result;
 				if (_count <= 0) {
-					throw new MyHttpException (0);
+					throw new MyHttpException (400);
 				} else if (--_header_max < 0) {
 					throw new MyHttpException (413);
 				} else if (_chs [0] == 0x0a) {

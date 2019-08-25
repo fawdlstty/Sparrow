@@ -160,6 +160,10 @@ namespace SparrowServer.Swagger {
 				});
 				foreach (var _method in _module.m_methods) {
 					string _key1 = $"/api/{_module.m_prefix}/{_method.m_name}", _key2 = _method.m_request_type.ToLower ();
+					if (_key2.is_null ()) {
+						_key2 = "get";
+						_method.m_description = $"{_method.m_description}\r\n\r\nThis method also supports GET/PUT/POST/DELETE requests";
+					}
 					var _parameters = new JArray ();
 					foreach (var _param in _method.m_params) {
 						_parameters.Add (new JObject {
@@ -173,6 +177,8 @@ namespace SparrowServer.Swagger {
 					m_obj ["paths"] [_key1] = new JObject {
 						[_key2] = new JObject {
 							["tags"] = new JArray () { _module.m_name },
+							["summary"] = _method.m_summary,
+							["description"] = _method.m_description,
 							["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },

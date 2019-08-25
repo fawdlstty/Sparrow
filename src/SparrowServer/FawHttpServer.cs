@@ -69,7 +69,7 @@ namespace SparrowServer {
 
 
 		// processing a request
-		private (bool, string, string) _request_http_once (Stream _req_stream, string _src_ip, CancellationTokenSource _source) {
+		private (bool, string, string) _request_http_once (Stream _req_stream, string _src_ip, CancellationToken _token, byte _first_byte) {
 			bool _static = true, _error = false;
 			string _ws_module = "";
 			var _request_begin = DateTime.Now;
@@ -77,7 +77,7 @@ namespace SparrowServer {
 			FawRequest _req = new FawRequest ();
 			FawResponse _res = new FawResponse ();
 			try {
-				_req.deserialize (_req_stream, _src_ip, _source, m_alive_http_ms);
+				_req.deserialize (_req_stream, _src_ip, _token, _first_byte);
 				_req._check_int = m_check_int;
 				_req._check_long = m_check_long;
 				_req._check_string = m_check_string;
@@ -113,6 +113,11 @@ namespace SparrowServer {
 					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
 						_res.write (m_swagger_data);
 						_res.set_content_from_filename (_req.m_path);
+					} else if (m_doc_path != "/swagger/" && _req.m_path.mid (m_doc_path.Length - 1) == "index.html") {
+						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
+						string _data = _read_from_namespace (_namespace).to_str ();
+						_res.write (_data.Replace ("/swagger/", m_doc_path));
+						_res.set_content_from_filename (_namespace);
 					} else {
 						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
 						_res.write (_read_from_namespace (_namespace));
@@ -122,7 +127,7 @@ namespace SparrowServer {
 					//	if (_req.m_path == "monitor/data.json") {
 					//		_res.write (m_monitor.get_json (_req.get_value<int> ("count", false)));
 					//		//_res.set_content_from_filename (_req.m_path);
-					//	}
+					//}
 				} else if (_req.m_option == "GET") {
 					byte [] _data = _load_res (_req.m_path);
 					if (_data != null) {
@@ -283,28 +288,12 @@ namespace SparrowServer {
 				_listener.Start ();
 				while (true) {
 					var _tmp_client = _listener.AcceptTcpClient ();
+					//Console.WriteLine ($"accept {_tmp_client.Client.Handle}");
 					// Task.Factory.StartNew  ThreadPool.QueueUserWorkItem
 					ThreadPool.QueueUserWorkItem ((_client_o) => {
-						using (TcpClient _client = _client_o as TcpClient) {
-							Console.WriteLine ("conn start");
-							try {
-								var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
-								using (var _net_stream = _client.GetStream ()) {
-									_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
-									if (m_pfx != null) {
-										using (var _ssl_stream = new SslStream (_net_stream)) {
-											_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
-											_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
-											_loop_process_http (_net_stream, _ssl_stream, _src_ip);
-										}
-									} else {
-										_loop_process_http (_net_stream, null, _src_ip);
-									}
-								}
-							} catch (Exception) {
-							}
-							Console.WriteLine ("conn stop");
-						}
+						//Console.WriteLine ("conn start");
+						_loop_process (_client_o as TcpClient);
+						//Console.WriteLine ("conn stop");
 					}, _tmp_client);
 				}
 			} catch (Exception ex) {
@@ -312,11 +301,39 @@ namespace SparrowServer {
 			}
 		}
 
+		private void _loop_process (TcpClient _client) {
+			try {
+				using (_client) {
+					var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
+					var _net_stream = _client.GetStream ();
+					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
+					if (m_pfx != null) {
+						using (var _ssl_stream = new SslStream (_net_stream)) {
+							_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
+							_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
+							_loop_process_http (_net_stream, _ssl_stream, _src_ip);
+						}
+					} else {
+						_loop_process_http (_net_stream, null, _src_ip);
+					}
+				}
+			} catch (TaskCanceledException) {
+			} catch (IOException) {
+			} catch (Exception ex) {
+				Console.Write (ex.ToString ());
+			}
+		}
+
 		private void _loop_process_http (NetworkStream _net_stream, SslStream _ssl_stream, string _src_ip) {
 			Stream _stream = (_ssl_stream != null ? (Stream) _ssl_stream : _net_stream);
 			while (true) {
-				CancellationTokenSource _source = new CancellationTokenSource (m_alive_http_ms);
-				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source);
+				int _byte = _stream.ReadByte ();
+				if (_byte == -1)
+					return;
+				var _source = new CancellationTokenSource (m_alive_http_ms);
+				//Console.WriteLine ("_request_http_once start");
+				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source.Token, (byte) _byte);
+				//Console.WriteLine ("_request_http_once stop");
 				if (_go_ws) {
 					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
 					_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
@@ -327,7 +344,6 @@ namespace SparrowServer {
 		}
 
 		private void _loop_process_ws (Stream _stream, string _module, string _api_key) {
-			// TODO: 创建ws连接对象
 			var _conn_struct = m_ws_handlers [_module];
 			var _observer = (_api_key.is_null () ? _conn_struct.get_pure_connection () : _conn_struct.get_jwt_connection (_api_key));
 			while (true) {
@@ -340,6 +356,7 @@ namespace SparrowServer {
 				bool _is_eof = (_buf [0] & 0x80) > 0;
 				if ((_buf [0] & 0x70) > 0)
 					throw new Exception ("RSV1~RSV3 is not 0");
+				// TODO: 处理连接
 			}
 		}
 
