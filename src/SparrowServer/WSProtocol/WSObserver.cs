@@ -19,7 +19,7 @@ namespace SparrowServer.WSProtocol {
 			send (new { result = "success", type = "data", content = _data }.to_json ().to_bytes ());
 		}
 
-		public void send_jwt_token (JObject _obj_jwt, DateTime _exp) {
+		public void send_jwt_token (object _obj_jwt, DateTime _exp) {
 			send (new { result = "success", type = "jwt_token", content = JWTManager.Generate (_obj_jwt, _exp) }.to_json ().to_bytes ());
 		}
 

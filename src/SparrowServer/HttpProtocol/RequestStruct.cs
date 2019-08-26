@@ -16,7 +16,7 @@ namespace SparrowServer.HttpProtocol {
 			m_auth_method = _auth_method;
 			m_jwt_type = _jwt_type;
 			if (m_jwt_type == "Gen") {
-				(JObject, DateTime) _jwt_gen_ret = (null, DateTime.Now);
+				(object, DateTime) _jwt_gen_ret = (null, DateTime.Now);
 				if (_jwt_gen_ret.GetType () != _method.ReturnType)
 					throw new Exception ($"{m_name}: [JWTGen] method return type must be (JObject, DateTime)");
 			}
@@ -84,7 +84,7 @@ namespace SparrowServer.HttpProtocol {
 					}
 				}
 				if (m_jwt_type == "Gen") {
-					var (_o, _exp) = ((JObject, DateTime)) _ret;
+					var (_o, _exp) = ((object, DateTime)) _ret;
 					_ret = JWTManager.Generate (_o, _exp);
 				}
 				if (!_ignore_return) {

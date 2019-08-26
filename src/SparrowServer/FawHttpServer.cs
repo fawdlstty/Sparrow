@@ -210,7 +210,7 @@ namespace SparrowServer {
 						} else if (_method_attr != null) {
 							if (!_method.IsStatic && _jwt_reconnect_func == null)
 								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
-							if (!_method.Name.left_is ("_update_"))
+							if (!_method_attr.HideDoc)
 								_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
 							//
 							string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
@@ -221,7 +221,7 @@ namespace SparrowServer {
 									continue;
 								var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
 								var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
-								if (!_method.Name.left_is ("_update_"))
+								if (!_method_attr.HideDoc)
 									_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
 							}
 							_path_prefix = $"{_method_attr.Type} {_path_prefix}";

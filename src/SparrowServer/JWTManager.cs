@@ -9,10 +9,10 @@ using System.Text;
 
 namespace SparrowServer {
 	internal class JWTManager {
-		public static string Generate (JObject _o, DateTime _exp) {
+		public static string Generate (object _o, DateTime _exp) {
 			var _builder = new JwtBuilder ().WithAlgorithm (new HMACSHA256Algorithm ()).WithSecret (m_secret);
 			_builder = _builder.AddClaim ("exp", new DateTimeOffset (_exp).ToUnixTimeSeconds ());
-			foreach (var (_key, _val) in _o) {
+			foreach (var (_key, _val) in _o.json ()) {
 				if (_key == "exp")
 					throw new Exception ("field name \"exp\" is invalid");
 				_builder = _builder.AddClaim (_key, _val.to_str ());
