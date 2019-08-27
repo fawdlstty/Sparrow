@@ -192,7 +192,7 @@ namespace SparrowServer {
 						}
 						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
 						//
-						if (_method_attrs.Count () + _jwt_attrs.Count () >= 2)
+						if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
 							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
 						//
 						//
@@ -262,7 +262,7 @@ namespace SparrowServer {
 						}
 						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
 						//
-						if (_method_attrs.Count () + _jwt_attrs.Count () >= 2)
+						if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
 							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
 						//
 						//
