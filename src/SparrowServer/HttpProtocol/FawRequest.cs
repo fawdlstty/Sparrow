@@ -58,6 +58,8 @@ namespace SparrowServer.HttpProtocol {
 				return (object) _var_str.to_short ();
 			} else if (_type == typeof (double)) {
 				return (object) _var_str.to_double ();
+			} else if (_type == typeof (JObject)) {
+				return (object) _var_str.to_str ().json ();
 			} else if (_type == typeof (DateTime)) {
 				return (object) _var_str.to_datetime ();
 			} else {

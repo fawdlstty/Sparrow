@@ -169,128 +169,154 @@ namespace SparrowServer {
 
 		// loop processing
 		public void run (ushort port) {
-			m_port = port;
-			Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info, (m_pfx == null ? "http" : "https")) : null);
-			foreach (var _module in m_assembly.GetTypes ()) {
-				var _http_module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
-				if (_http_module_attr != null) {
-					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
-					_builder?.add_module (_module.Name, _module_prefix, _http_module_attr.m_description);
-					//
-					MethodInfo _jwt_reconnect_func = null;
-					Action<MethodInfo> _process_method = (_method) => {
-						// process attribute
-						var _method_attrs = (from p in _method.GetCustomAttributes () where p is IHTTPMethod select p as IHTTPMethod);
-						if (_method_attrs.Count () > 1) {
-							throw new Exception ("Simultaneous use of multiple HTTP Attribute is not supported");
-						}
-						var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
-						//
-						var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
-						if (_jwt_attrs.Count () > 1) {
-							throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
-						}
-						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
-						//
-						if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
-							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
-						//
-						//
-						var _params = _method.GetParameters ();
-						if (_jwt_type == "Connect") {
-							if (_method.ReturnType != _module)
-								throw new Exception ("Return value in [JWTConnect] method must be current class type");
-							if (!_method.IsStatic)
-								throw new Exception ("[JWTConnect] method must be static");
-							if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
-								throw new Exception ("[JWTConnect] can only have one parameter, and the type of parameter is JObject");
-							if (_jwt_reconnect_func != null)
-								throw new Exception ("[JWTConnect] cannot appear twice in the same module");
-							_jwt_reconnect_func = _method;
-						} else if (_method_attr != null) {
-							if (!_method.IsStatic && _jwt_reconnect_func == null)
-								throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
-							if (!_method_attr.HideDoc)
-								_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
-							//
-							string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
-							foreach (var _param in _params) {
-								if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
-									continue;
-								if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
-									continue;
-								var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
-								var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
-								if (!_method_attr.HideDoc)
-									_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
-							}
-							_path_prefix = $"{_method_attr.Type} {_path_prefix}";
-							if (m_api_handlers.ContainsKey (_path_prefix))
-								throw new Exception ("Url request address prefix conflict");
-							m_api_handlers.Add (_path_prefix, new RequestStruct ($"{_module.Name}.{_method.Name}", _method, _jwt_reconnect_func, _jwt_type));
-						}
-					};
-					// process static method
-					foreach (var _method in _module.GetMethods ()) {
-						if (!_method.IsStatic)
-							continue;
-						_process_method (_method);
-					}
-					// process dynamic method
-					foreach (var _method in _module.GetMethods ()) {
-						if (_method.IsStatic)
-							continue;
-						_process_method (_method);
-					}
-				}
-				var _ws_module_attr = _module.GetCustomAttribute (typeof (WSModuleAttribute), true) as WSModuleAttribute;
-				if (_ws_module_attr != null) {
-					string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
-					_builder?.add_module ($"{_module.Name}_ws", _module_prefix, _ws_module_attr.m_description);
-					//
-					ConnectStruct _connect = new ConnectStruct (_module.Name, _module);
-					foreach (var _method in _module.GetMethods ()) {
-						var _method_attrs = (from p in _method.GetCustomAttributes () where p is WSMethodAttribute select p as WSMethodAttribute);
-						if (_method_attrs.Count () > 1) {
-							throw new Exception ("Simultaneous use of multiple WSMethod Attribute is not supported");
-						}
-						var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
-						//
-						var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
-						if (_jwt_attrs.Count () > 1) {
-							throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
-						}
-						var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
-						//
-						if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
-							throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
-						//
-						//
-						if (_jwt_type == "PureConnect") {
-							_connect.add_pure_auth_method (_method);
-						} else if (_jwt_type == "Connect") {
-							_connect.add_auth_method (_method);
-						} else if (_method_attrs.Count () > 0) {
-							_connect.add_ws_method (_method);
-						}
-					}
-					if (m_ws_handlers.ContainsKey (_module.Name))
-						throw new Exception ($"{_module_prefix}: Websocket url request address is conflict");
-					m_ws_handlers.Add (_module_prefix, _connect);
-				}
-			}
-			m_swagger_data = _builder?.build ();
-			//
-			new Thread (() => {
-				while (true) {
-					Thread.Sleep (10000);
-					GC.Collect ();
-				}
-			}).Start ();
-			//
 			try {
-				var _listener = new TcpListener (IPAddress.Loopback, port);
+				m_port = port;
+				Swagger.DocBuilder _builder = (m_doc_info != null ? new Swagger.DocBuilder (m_doc_info, (m_pfx == null ? "http" : "https")) : null);
+				foreach (var _module in m_assembly.GetTypes ()) {
+					var _http_module_attr = _module.GetCustomAttribute (typeof (HTTPModuleAttribute), true) as HTTPModuleAttribute;
+					if (_http_module_attr != null) {
+						string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
+						_builder?.add_module (_module.Name, _module_prefix, _http_module_attr.m_description);
+						//
+						MethodInfo _jwt_reconnect_func = null;
+						Action<MethodInfo> _process_method = (_method) => {
+							// process attribute
+							var _method_attrs = (from p in _method.GetCustomAttributes () where p is IHTTPMethod select p as IHTTPMethod);
+							if (_method_attrs.Count () > 1) {
+								throw new Exception ("Simultaneous use of multiple HTTP Attribute is not supported");
+							}
+							var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
+							//
+							var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
+							if (_jwt_attrs.Count () > 1) {
+								throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
+							}
+							var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
+							//
+							if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
+								throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
+							//
+							//
+							var _params = _method.GetParameters ();
+							if (_jwt_type == "Connect") {
+								if (_method.ReturnType != _module)
+									throw new Exception ("Return value in [JWTConnect] method must be current class type");
+								if (!_method.IsStatic)
+									throw new Exception ("[JWTConnect] method must be static");
+								if (_params.Length != 1 || _params [0].ParameterType != typeof (JObject))
+									throw new Exception ("[JWTConnect] can only have one parameter, and the type of parameter is JObject");
+								if (_jwt_reconnect_func != null)
+									throw new Exception ("[JWTConnect] cannot appear twice in the same module");
+								_jwt_reconnect_func = _method;
+							} else if (_method_attr != null) {
+								if (!_method.IsStatic && _jwt_reconnect_func == null)
+									throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
+								if (!_method_attr.HideDoc)
+									_builder?.add_method (_module.Name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
+								//
+								string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
+								foreach (var _param in _params) {
+									if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
+										continue;
+									if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
+										continue;
+									var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
+									var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
+									if (!_method_attr.HideDoc)
+										_builder?.add_param (_module.Name, _method_attr.Type, _method.Name, _param.Name, _param.ParameterType.Name, _param_desp);
+								}
+								_path_prefix = $"{_method_attr.Type} {_path_prefix}";
+								if (m_api_handlers.ContainsKey (_path_prefix))
+									throw new Exception ("Url request address prefix conflict");
+								m_api_handlers.Add (_path_prefix, new RequestStruct ($"{_module.Name}.{_method.Name}", _method, _jwt_reconnect_func, _jwt_type));
+							}
+						};
+						// process static method
+						foreach (var _method in _module.GetMethods ()) {
+							if (!_method.IsStatic)
+								continue;
+							_process_method (_method);
+						}
+						// process dynamic method
+						foreach (var _method in _module.GetMethods ()) {
+							if (_method.IsStatic)
+								continue;
+							_process_method (_method);
+						}
+					}
+					var _ws_module_attr = _module.GetCustomAttribute (typeof (WSModuleAttribute), true) as WSModuleAttribute;
+					if (_ws_module_attr != null) {
+						string _module_prefix = (_module.Name.right_is_nocase ("Module") ? _module.Name.left (_module.Name.Length - 6) : _module.Name);
+						_builder?.add_module ($"{_module.Name}_ws", _module_prefix, _ws_module_attr.m_description);
+						//
+						ConnectStruct _connect = new ConnectStruct (_module.Name, _module);
+						foreach (var _method in _module.GetMethods ()) {
+							var _method_attrs = (from p in _method.GetCustomAttributes () where p is WSMethodAttribute select p as WSMethodAttribute);
+							if (_method_attrs.Count () > 1) {
+								throw new Exception ("Simultaneous use of multiple WSMethod Attribute is not supported");
+							}
+							var _method_attr = (_method_attrs.Count () > 0 ? _method_attrs.First () : null);
+							//
+							var _jwt_attrs = (from p in _method.GetCustomAttributes () where p is IJWTMethod select p as IJWTMethod);
+							if (_jwt_attrs.Count () > 1) {
+								throw new Exception ("Simultaneous use of multiple JWT Attribute is not supported");
+							}
+							var _jwt_type = (_jwt_attrs.Count () > 0 ? _jwt_attrs.First ().Type : "");
+							//
+							if (_method_attrs.Count () + _jwt_attrs.Count () >= 3)
+								throw new Exception ("Simultaneous use of multiple between JWT and WS Attribute is not supported");
+							//
+							//
+							if (_jwt_type == "PureConnect") {
+								_connect.add_pure_auth_method (_method);
+							} else if (_jwt_type == "Connect") {
+								_connect.add_auth_method (_method);
+							} else if (_method_attrs.Count () > 0) {
+								_connect.add_ws_method (_method);
+							}
+						}
+						if (m_ws_handlers.ContainsKey (_module.Name))
+							throw new Exception ($"{_module_prefix}: Websocket url request address is conflict");
+						m_ws_handlers.Add (_module_prefix, _connect);
+					}
+				}
+				m_swagger_data = _builder?.build ();
+				//
+				new Thread (() => {
+					while (true) {
+						Thread.Sleep (10000);
+						GC.Collect ();
+					}
+				}).Start ();
+				//
+				var _listener = new TcpListener (IPAddress.Parse ("0.0.0.0"), port);
 				_listener.Start ();
+				// ---test begin---
+				if (m_pfx != null) {
+					new Thread (() => {
+						var _listener1 = new TcpListener (IPAddress.Parse ("0.0.0.0"), port + 1);
+						_listener1.Start ();
+						while (true) {
+							var _tmp_client = _listener1.AcceptTcpClient ();
+							ThreadPool.QueueUserWorkItem ((_client_o) => {
+								try {
+									using (var _client = (TcpClient) _client_o) {
+										var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
+										var _net_stream = _client.GetStream ();
+										_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
+										_loop_process_http (_net_stream, null, _src_ip);
+									}
+								} catch (TaskCanceledException) {
+								} catch (IOException) {
+								} catch (Exception ex) {
+									//Console.Write (ex.ToString ());
+									Log.show_error (ex);
+								}
+							}, _tmp_client);
+						}
+					}).Start ();
+				}
+				// ---test end---
 				while (true) {
 					var _tmp_client = _listener.AcceptTcpClient ();
 					//Console.WriteLine ($"accept {_tmp_client.Client.Handle}");
@@ -325,7 +351,8 @@ namespace SparrowServer {
 			} catch (TaskCanceledException) {
 			} catch (IOException) {
 			} catch (Exception ex) {
-				Console.Write (ex.ToString ());
+				//Console.Write (ex.ToString ());
+				Log.show_error (ex);
 			}
 		}
 

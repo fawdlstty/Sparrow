@@ -98,8 +98,12 @@ namespace SparrowServer.Swagger {
 				["Boolean"] = "boolean",
 				["Int32"] = "integer",
 				["Int64"] = "integer",
+				["JObject"] = "string",
 				["String"] = "string",
 			};
+			if (_param_type.Contains ('.'))
+				_param_type = _param_type.mid_last (".");
+			bool _is_json = (_param_type == "JObject");
 			if (_convert_type.ContainsKey (_param_type))
 				_param_type = _convert_type [_param_type];
 			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
@@ -110,7 +114,7 @@ namespace SparrowServer.Swagger {
 						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
 							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
 								throw new Exception ("Repeated addition of params");
-							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = _description, m_in = (_request_type == "POST" ? "body" : "query") });
+							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = (_description.is_null () && _is_json ? "json data" : _description), m_in = (_request_type == "POST" ? "body" : "query") });
 							return;
 						}
 					}

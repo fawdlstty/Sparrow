@@ -8,10 +8,14 @@ namespace SparrowServer {
 		// 打印信息
 		public static void show (string str) {
 			//Console.WriteLine (str);
-			byte [] bytes = Encoding.UTF8.GetBytes (str + '\n');
-			lock (m_locker) {
-				using (FileStream fs = File.Open ($"{m_path}/{DateTime.Now.ToString ("yyyyMMdd")}.log", FileMode.Append))
-					fs.Write (bytes, 0, bytes.Length);
+			if (m_path.is_null ()) {
+				Console.WriteLine (str);
+			} else {
+				byte [] bytes = Encoding.UTF8.GetBytes (str + '\n');
+				lock (m_locker) {
+					using (FileStream fs = File.Open ($"{m_path}/{DateTime.Now.ToString ("yyyyMMdd")}.log", FileMode.Append))
+						fs.Write (bytes, 0, bytes.Length);
+				}
 			}
 		}
 
@@ -30,7 +34,7 @@ namespace SparrowServer {
 
 		public static string m_path {
 			set {
-				_path = $"{value}/log";
+				_path = $"{value}log";
 				if (!Directory.Exists (m_path))
 					Directory.CreateDirectory (m_path);
 			}
