@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SparrowServer\SparrowServer.csproj" />
+    <ProjectReference Include="..\Sparrow\Sparrow.csproj" />
   </ItemGroup>
 
 </Project>

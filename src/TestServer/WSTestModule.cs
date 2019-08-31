@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
-using SparrowServer;
-using SparrowServer.Attributes;
-using SparrowServer.WSProtocol;
+using Sparrow;
+using Sparrow.Attributes;
+using Sparrow.WSProtocol;
 using System;
 
 namespace TestServer {
@@ -9,39 +9,39 @@ namespace TestServer {
 	// TODO: 此模块暂未完成，功能暂时无法使用
 	[WSModule ("webservice module")]
 	public class WSTestModule : WSObserver {
-		[PureConnect]
-		public static WSTestModule _check_auth () {
-			return new WSTestModule { n = 100 };
-		}
+		//[PureConnect]
+		//public static WSTestModule _check_auth () {
+		//	return new WSTestModule { n = 100 };
+		//}
 
-		[JWTConnect]
-		public static WSTestModule _check_auth (JObject _jwt) {
-			return new WSTestModule { n = 200 };
-		}
+		//[JWTConnect]
+		//public static WSTestModule _check_auth (JObject _jwt) {
+		//	return new WSTestModule { n = 200 };
+		//}
 
-		[WSMethod]
-		public string on_hello () {
-			return "hello websocket";
-		}
+		//[WSMethod]
+		//public string on_hello () {
+		//	return "hello websocket";
+		//}
 
-		[WSMethod]
-		public void set_n_value (int value) {
-			n = value;
-		}
+		//[WSMethod]
+		//public void set_n_value (int value) {
+		//	n = value;
+		//}
 
-		[WSMethod]
-		public int get_n_value () {
-			return n;
-		}
+		//[WSMethod]
+		//public int get_n_value () {
+		//	return n;
+		//}
 
-		public override void OnConnect (JObject _obj_jwt) {}
-		public override void OnPong () {
-			send_jwt_token (new { name = "faw" }.json (), DateTime.Now.AddMinutes (2));
-		}
-		public override void OnRecv (byte [] _data) {}
-		public override void OnError () {}
-		public override void OnClose () {}
+		//public override void OnConnect (JObject _obj_jwt) {}
+		//public override void OnPong () {
+		//	send_jwt_token (new { name = "faw" }.json (), DateTime.Now.AddMinutes (2));
+		//}
+		//public override void OnRecv (byte [] _data) {}
+		//public override void OnError () {}
+		//public override void OnClose () {}
 
-		private int n = 0;
+		//private int n = 0;
 	}
 }

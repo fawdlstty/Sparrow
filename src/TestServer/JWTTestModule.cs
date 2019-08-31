@@ -1,5 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
-using SparrowServer.Attributes;
+using Sparrow.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,8 +8,8 @@ namespace TestServer {
 	[HTTPModule ("Test for JWT")]
 	public class JWTTestModule {
 		[HTTP.GET ("generate jwt token"), JWTGen]
-		public static (JObject, DateTime) generate () {
-			return (new JObject { ["test"] = "hello" }, DateTime.Now.AddMinutes (2));
+		public static (object, DateTime) generate () {
+			return (new { test = "hello" }, DateTime.Now.AddMinutes (2));
 		}
 
 		[JWTConnect]

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.757
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SparrowServer", "SparrowServer\SparrowServer.csproj", "{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sparrow", "Sparrow\Sparrow.csproj", "{8BCEE564-3963-45F8-A69A-F97F8ECDDE40}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestServer", "TestServer\TestServer.csproj", "{FD5F2767-2E35-42A5-95A2-A14958D3AC20}"
 EndProject

@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
-using SparrowServer;
-using SparrowServer.Monitor;
+using Sparrow;
+using Sparrow.Monitor;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -8,24 +8,30 @@ using System.Reflection;
 namespace TestServer {
 	class Program {
 		static void Main (string [] args) {
-			FawHttpServer _sss = new FawHttpServer (Assembly.GetExecutingAssembly (), Guid.NewGuid ().ToString ("N"));
-			_sss.set_api_path ("/api");
-			// Without calling this interface, the swagger document is not generated
-			// 如果没有调用这个接口，将不会生成swagger文档
-			_sss.set_doc_info ("/swagger", new WEBDocInfo {
+			SparrowServer _server = new SparrowServer (Assembly.GetExecutingAssembly (), Guid.NewGuid ().ToString ("N"));
+
+			// api path: http://127.0.0.1:1234/api/module_method...
+			_server.set_api_path ("/api");
+
+			// doc path: http://127.0.0.1:1234/doc/
+			_server.set_doc_info ("/doc", new WEBDocInfo {
 				DocName = "Test interface documentation",
 				Version = "0.0.1",
-				Description = "This is a large document, and I have omitted 10,000 words here",
-				//Contact = "f@fawdlstty.com",
-				Host = "127.0.0.1:1234"
+				Description = "This is a large document, and I have omitted <b>10,000</b> words here",
 			});
-			// enable monitor (current not implement)
-			// 启用状态监控（暂时无用）
-			_sss.enable_monitor ();
+
+			// if do not call this, log will print to console
+			_server.set_log_path ("D:/www_log/");
+
 			// If this function is called, the HTTPS protocol is provided externally, otherwise the HTTP protocol is provided
-			// 如果调用了这个函数，那么将对外提供https协议，否则提供http协议
-			//_sss.set_ssl_file ("F:/test.pfx", "12345678");
-			_sss.run (1234);
+			//_server.set_ssl_file ("F:/test.pfx", "testpfx123456");
+
+			// set static file path or namespace path
+			_server.set_res_from_path ("F:/wwwroot");
+			//_server.set_res_from_namespace ("TestServer.res");
+
+			// run service
+			_server.run (1234);
 		}
 	}
 }
