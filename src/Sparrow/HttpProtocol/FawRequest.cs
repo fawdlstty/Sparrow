@@ -37,31 +37,34 @@ namespace Sparrow.HttpProtocol {
 			return (T) get_type_value (typeof (T), _varname, _force_valid);
 		}
 		public object get_type_value (Type _type, string _varname, bool _force_valid = true) {
+			if (_type == typeof ((string, byte []))) {
+				return (m_files.ContainsKey (_varname) ? m_files [_varname] : ("", null));
+			}
 			string _var_str = (m_posts.ContainsKey (_varname) ? m_posts [_varname] : (m_gets.ContainsKey (_varname) ? m_gets [_varname] : ""));
 			if (_type == typeof (int)) {
 				int _var_int = _var_str.to_int ();
 				if (_check_int != null && !_check_int (_varname, _var_int, _force_valid))
 					throw new Exception ($"Parameter {_varname} format error");
-				return (object) _var_int;
+				return _var_int;
 			} else if (_type == typeof (long)) {
 				var _var_long = _var_str.to_long ();
 				if (_check_int != null && !_check_long (_varname, _var_long, _force_valid))
 					throw new Exception ($"Parameter {_varname} format error");
-				return (object) _var_long;
+				return _var_long;
 			} else if (_type == typeof (string)) {
 				if (_check_string != null && !_check_string (_varname, _var_str, _force_valid))
 					throw new Exception ($"Parameter {_varname} format error");
-				return (object) _var_str;
+				return _var_str;
 			} else if (_type == typeof (bool)) {
-				return (object) _var_str.to_bool ();
+				return _var_str.to_bool ();
 			} else if (_type == typeof (short)) {
-				return (object) _var_str.to_short ();
+				return _var_str.to_short ();
 			} else if (_type == typeof (double)) {
-				return (object) _var_str.to_double ();
+				return _var_str.to_double ();
 			} else if (_type == typeof (JObject)) {
-				return (object) _var_str.to_str ().json ();
+				return _var_str.to_str ().json ();
 			} else if (_type == typeof (DateTime)) {
-				return (object) _var_str.to_datetime ();
+				return _var_str.to_datetime ();
 			} else {
 				return JsonConvert.DeserializeObject (_var_str, _type);
 				//var _method = typeof (JsonConvert).GetMethod ("DeserializeObject").MakeGenericMethod (_type);

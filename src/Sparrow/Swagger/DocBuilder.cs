@@ -19,6 +19,7 @@ namespace Sparrow.Swagger {
 		public string m_summary;
 		public string m_description;
 		public List<_DocParam> m_params = new List<_DocParam> ();
+		public bool m_is_file;
 	}
 
 	internal class _DocParam {
@@ -86,7 +87,7 @@ namespace Sparrow.Swagger {
 				if (m_modules [i].m_name == _module_name) {
 					if ((from p in m_modules [i].m_methods where p.m_request_type == _request_type && p.m_name == _method_name select 1).Count () > 0)
 						throw new Exception ("Repeated addition of methods");
-					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_api_key = _api_key, m_summary = _summary, m_description = _description });
+					m_modules [i].m_methods.Add (new _DocMethod { m_request_type = _request_type, m_name = _method_name, m_api_key = _api_key, m_summary = _summary, m_description = _description, m_is_file = false });
 					return;
 				}
 			}
@@ -100,6 +101,7 @@ namespace Sparrow.Swagger {
 				["Int64"] = "integer",
 				["JObject"] = "string",
 				["String"] = "string",
+				["ValueTuple`2"] = "--image--",
 			};
 			if (_param_type.Contains ('.'))
 				_param_type = _param_type.mid_last (".");
@@ -112,6 +114,8 @@ namespace Sparrow.Swagger {
 				if (m_modules [i].m_name == _module_name) {
 					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
 						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
+							if (_param_type == "--image--")
+								m_modules [i].m_methods [j].m_is_file = true;
 							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
 								throw new Exception ("Repeated addition of params");
 							m_modules [i].m_methods [j].m_params.Add (new _DocParam () { m_name = _param_name, m_type = _param_type, m_description = (_description.is_null () && _is_json ? "json data" : _description), m_in = (_request_type == "POST" ? "body" : "query") });
@@ -176,26 +180,12 @@ namespace Sparrow.Swagger {
 						_key2 = "get";
 						_method.m_description = $"{_method.m_description}\r\n\r\nThis method also supports GET/PUT/POST/DELETE requests";
 					}
-					var _parameters = new JArray ();
-					foreach (var _param in _method.m_params) {
-						_parameters.Add (new JObject {
-							["in"] = _param.m_in,
-							["name"] = _param.m_name,
-							["description"] = _param.m_description,
-							["required"] = true,
-							//["type"] = _param.m_type,
-							//
-							//["style"] = "form",
-							//["explode"] = "false",
-							["schema"] = new JObject { ["type"] = _param.m_type },
-						});
-					}
 					m_obj ["paths"] [_key1] = new JObject {
 						[_key2] = new JObject {
 							["tags"] = new JArray () { _module.m_name },
 							["summary"] = _method.m_summary,
 							["description"] = _method.m_description,
-							["parameters"] = _parameters,
+							//["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },
 								["500"] = new JObject { ["description"] = "failure" },
@@ -205,6 +195,29 @@ namespace Sparrow.Swagger {
 					if (_method.m_api_key) {
 						m_obj ["paths"] [_key1] [_key2] ["security"] = JArray.Parse ("[{\"ApiKeyAuth\":[]}]");
 						m_obj ["paths"] [_key1] [_key2] ["responses"] ["401"] = new JObject { ["description"] = "Unauthorized" };
+					}
+					if (_method.m_is_file) {
+						((JObject) m_obj ["paths"] [_key1] [_key2]).Add ("requestBody", JObject.Parse ("{\"content\":{\"multipart/form-data\":{\"schema\":{\"type\":\"object\",\"properties\":{}}}}}"));
+						var _tmp_obj = (JObject) m_obj ["paths"] [_key1] [_key2] ["requestBody"] ["content"] ["multipart/form-data"] ["schema"] ["properties"];
+						foreach (var _param in _method.m_params) {
+							if (_param.m_type == "--image--") {
+								_tmp_obj.Add (_param.m_name, JObject.Parse ("{\"type\":\"string\",\"format\":\"binary\"}"));
+							} else {
+								_tmp_obj.Add (_param.m_name, JObject.Parse ($"{{\"type\":\"{_param.m_type}\"}}"));
+							}
+						}
+					} else {
+						var _parameters = new JArray ();
+						foreach (var _param in _method.m_params) {
+							_parameters.Add (new JObject {
+								["in"] = _param.m_in,
+								["name"] = _param.m_name,
+								["description"] = _param.m_description,
+								["required"] = true,
+								["schema"] = new JObject { ["type"] = _param.m_type },
+							});
+						}
+						((JObject) m_obj ["paths"] [_key1] [_key2]).Add ("parameters", _parameters);
 					}
 				}
 			}
