@@ -225,10 +225,14 @@ namespace Sparrow {
 								//
 								string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
 								foreach (var _param in _params) {
-									if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse))
+									if (_param.ParameterType == typeof (FawRequest) || _param.ParameterType == typeof (FawResponse)) {
 										continue;
-									if (((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count ()) > 0)
+									} else if ((from p in _param.GetCustomAttributes () where p is IReqParam select 1).Count () > 0) {
 										continue;
+									} else if (_param.ParameterType == typeof ((string, byte []))) {
+										if (_method_attr.Type != "PUT" && _method_attr.Type != "POST")
+											throw new Exception ("Method request types that contain file parameters can only be PUT or POST");
+									}
 									var _param_desps = (from p in _param.GetCustomAttributes () where p is ParamAttribute select (p as ParamAttribute).m_description);
 									var _param_desp = (_param_desps.Count () > 0 ? _param_desps.First () : "");
 									if (!_method_attr.HideDoc)

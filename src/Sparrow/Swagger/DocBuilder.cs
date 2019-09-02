@@ -185,7 +185,6 @@ namespace Sparrow.Swagger {
 							["tags"] = new JArray () { _module.m_name },
 							["summary"] = _method.m_summary,
 							["description"] = _method.m_description,
-							//["parameters"] = _parameters,
 							["responses"] = new JObject {
 								["200"] = new JObject { ["description"] = "success" },
 								["500"] = new JObject { ["description"] = "failure" },
@@ -194,16 +193,16 @@ namespace Sparrow.Swagger {
 					};
 					if (_method.m_api_key) {
 						m_obj ["paths"] [_key1] [_key2] ["security"] = JArray.Parse ("[{\"ApiKeyAuth\":[]}]");
-						m_obj ["paths"] [_key1] [_key2] ["responses"] ["401"] = new JObject { ["description"] = "Unauthorized" };
+						m_obj ["paths"] [_key1] [_key2] ["responses"] ["401"] = new JObject { ["description"] = "unauthorized" };
 					}
 					if (_method.m_is_file) {
 						((JObject) m_obj ["paths"] [_key1] [_key2]).Add ("requestBody", JObject.Parse ("{\"content\":{\"multipart/form-data\":{\"schema\":{\"type\":\"object\",\"properties\":{}}}}}"));
 						var _tmp_obj = (JObject) m_obj ["paths"] [_key1] [_key2] ["requestBody"] ["content"] ["multipart/form-data"] ["schema"] ["properties"];
 						foreach (var _param in _method.m_params) {
 							if (_param.m_type == "--image--") {
-								_tmp_obj.Add (_param.m_name, JObject.Parse ("{\"type\":\"string\",\"format\":\"binary\"}"));
+								_tmp_obj.Add (_param.m_name, new JObject { ["type"] = "string", ["format"] = "binary", ["description"] = _param.m_description });
 							} else {
-								_tmp_obj.Add (_param.m_name, JObject.Parse ($"{{\"type\":\"{_param.m_type}\"}}"));
+								_tmp_obj.Add (_param.m_name, new JObject { ["type"] = _param.m_type, ["description"] = _param.m_description });
 							}
 						}
 					} else {

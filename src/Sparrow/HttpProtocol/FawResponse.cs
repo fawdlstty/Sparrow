@@ -11,7 +11,7 @@ namespace Sparrow.HttpProtocol {
 			m_headers ["Content-Type"] = "text/plain; charset=utf-8";
 			m_headers ["Server"] = "Sparrow/0.1";
 			m_headers ["Access-Control-Allow-Origin"] = "*";
-			m_headers ["Access-Control-Allow-Headers"] = "X-Requested-With,Content-Type,Accept";
+			m_headers ["Access-Control-Allow-Headers"] = "X-API-Key,X-Requested-With,Content-Type,Accept";
 			m_headers ["Access-Control-Allow-Methods"] = "HEAD,GET,POST,PUT,DELETE,OPTIONS";
 		}
 
