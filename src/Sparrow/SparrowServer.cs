@@ -116,6 +116,8 @@ namespace Sparrow {
 					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
 						string _host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port}" : _req.get_header ("Host"));
 						_res.write (m_swagger_data.Replace ("%-faq-host-%", _host));
+						//_host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port + 1}" : _req.get_header ("Host"));
+						//_res.write (m_swagger_data.Replace ("%-faq-host1-%", _host));
 						_res.set_content_from_filename (_req.m_path);
 					} else if (m_doc_path != "/swagger/" && (_req.m_path == (m_doc_path.mid (1)) || _req.m_path.mid (m_doc_path.Length - 1) == "index.html")) {
 						var _namespace = $"{MethodBase.GetCurrentMethod ().DeclaringType.Namespace}.Swagger.res.{_req.m_path.mid (m_doc_path.mid (1))}";
@@ -307,30 +309,28 @@ namespace Sparrow {
 				// ---test begin---
 				// ---test begin---
 				// ---test begin---
-				if (m_pfx != null) {
-					new Thread (() => {
-						var _listener1 = new TcpListener (IPAddress.Any, port + 1);
-						_listener1.Start ();
-						while (true) {
-							var _tmp_client = _listener1.AcceptTcpClient ();
-							ThreadPool.QueueUserWorkItem ((_client_o) => {
-								try {
-									using (var _client = (TcpClient) _client_o) {
-										var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
-										var _net_stream = _client.GetStream ();
-										_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
-										_loop_process_http (_net_stream, null, _src_ip);
-									}
-								} catch (TaskCanceledException) {
-								} catch (IOException) {
-								} catch (Exception ex) {
-									//Console.Write (ex.ToString ());
-									Log.show_error (ex);
+				new Thread (() => {
+					var _listener1 = new TcpListener (IPAddress.Any, port + 1);
+					_listener1.Start ();
+					while (true) {
+						var _tmp_client = _listener1.AcceptTcpClient ();
+						ThreadPool.QueueUserWorkItem ((_client_o) => {
+							try {
+								using (var _client = (TcpClient) _client_o) {
+									var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
+									var _net_stream = _client.GetStream ();
+									_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
+									_loop_process_http (_net_stream, null, _src_ip);
 								}
-							}, _tmp_client);
-						}
-					}).Start ();
-				}
+							} catch (TaskCanceledException) {
+							} catch (IOException) {
+							} catch (Exception ex) {
+								//Console.Write (ex.ToString ());
+								Log.show_error (ex);
+							}
+						}, _tmp_client);
+					}
+				}).Start ();
 				// ---test end---
 				// ---test end---
 				// ---test end---

@@ -46,6 +46,10 @@ namespace Sparrow.HttpProtocol {
 		private List<byte> m_data = new List<byte> ();
 		public Dictionary<string, string> m_headers = new Dictionary<string, string> (StringComparer.OrdinalIgnoreCase);
 
+		public bool has_data () {
+			return m_data.Count > 0;
+		}
+
 		public byte [] build_response (FawRequest _req) {
 			var _data = new List<byte> ();
 			_data.AddRange ($"{_req.m_version} {m_status_code} {(m_codes.ContainsKey (m_status_code) ? m_codes [m_status_code] : "Unknown Error")}\r\n".to_bytes ());
@@ -64,7 +68,7 @@ namespace Sparrow.HttpProtocol {
 			}
 			m_headers ["Content-Length"] = _cnt_data.Count.to_str ();
 			foreach (var (_key, _val) in m_headers)
-				_data.AddRange ($"{_key}: {_val}\r\n".to_bytes ());
+				_data.AddRange ($"{_format_key (_key)}: {_val}\r\n".to_bytes ());
 			_data.AddRange ("\r\n".to_bytes ());
 			if (m_status_code != 200 && _cnt_data.Count == 0) {
 				_data.AddRange (m_codes [m_status_code].to_bytes ());
@@ -326,6 +330,17 @@ namespace Sparrow.HttpProtocol {
 		};
 		public static string _get_content_type (string _ext) {
 			return (s_plain.ContainsKey (_ext) ? s_plain [_ext] : "application/octet-stream");
+		}
+
+		public static string _format_key (string s) {
+			if (s.is_null () || (s [0] >= 'A' && s [0] <= 'Z'))
+				return s;
+			var _list = s.ToLower ().split (false, '-');
+			for (int i = 0; i < _list.Length; ++i) {
+				if (_list?.Length > 0 && _list [i] [0] >= 'a' && _list [i] [0] <= 'z')
+					_list [i] = $"{_list [i].mid (0, 1).ToUpper ()}{_list [i].mid (1)}";
+			}
+			return _list.join ("-");
 		}
 	}
 }

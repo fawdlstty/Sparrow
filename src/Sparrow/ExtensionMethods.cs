@@ -508,6 +508,10 @@ namespace Sparrow {
 				return (s, "");
 			return (s.left (_p), s.mid (_p + 1));
 		}
+		public static (T, T) split2<T> (this string s, params char [] sp) {
+			var (_l, _r) = split2 (s, sp);
+			return ((T, T)) (Convert.ChangeType (_l, typeof (T)), Convert.ChangeType (_r, typeof (T)));
+		}
 
 		// 切割字符串并转新类型
 		public static T [] split<T> (this string s, bool remove_empty, params char [] sp) {

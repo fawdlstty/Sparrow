@@ -45,7 +45,6 @@ namespace Sparrow.HttpProtocol {
 				}
 				//
 				var _params = new object [m_params.Count];
-				bool _ignore_return = false;
 				for (int i = 0; i < m_params.Count; ++i) {
 					if (m_params [i].Item1 != null) {
 						_params [i] = _req.get_type_value (m_params [i].Item1, m_params [i].Item2);
@@ -56,7 +55,6 @@ namespace Sparrow.HttpProtocol {
 								break;
 							case "FawResponse":
 								_params [i] = _res;
-								_ignore_return = true;
 								break;
 							case ":IP":
 								_params [i] = _req.m_ip;
@@ -87,13 +85,13 @@ namespace Sparrow.HttpProtocol {
 					var (_o, _exp) = ((object, DateTime)) _ret;
 					_ret = JWTManager.Generate (_o, _exp);
 				}
-				if (!_ignore_return) {
+				if (!_res.has_data ()) {
 					if (_ret is byte _byte) {
 						_res.write (_byte);
 					} else if (_ret is byte [] _bytes) {
 						_res.write (_bytes);
 					} else {
-						string _content = (_ret.GetType ().IsPrimitive ? _ret.to_str () : _ret.to_json ());
+						string _content = (_ret == null ? "" : (_ret.GetType ().IsPrimitive ? _ret.to_str () : _ret.to_json ()));
 						object _o;
 						if (_content == "") {
 							_o = new { result = "success" };
