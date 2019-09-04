@@ -217,7 +217,15 @@ namespace Sparrow {
 		//public static long [] [] json_array2_int64 (this string s) { return (from _items in JArray.FromObject (s) select (from _item in _items select _item.to_long ()).ToArray ()).ToArray (); }
 
 		// 对象转json对象
-		public static JObject json (this object o) { if (o == null) return null; return JObject.FromObject (o); }
+		public static JObject json (this object o) {
+			if (o == null) {
+				return null;
+			} else if (o is string s) {
+				return JObject.Parse (s);
+			} else {
+				return JObject.FromObject (o);
+			}
+		}
 
 		// 对象转json对象
 		public static JArray json (this object [] o) { if (o == null) return null; return JArray.FromObject (o); }

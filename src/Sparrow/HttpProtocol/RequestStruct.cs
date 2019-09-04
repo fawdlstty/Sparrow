@@ -73,7 +73,7 @@ namespace Sparrow.HttpProtocol {
 				var _ret = m_method.Invoke (_obj, _params);
 				//if (_ret.GetType () == typeof (Task<>)) // 始终为False
 				if (_ret is Task _t) {
-					if (_ret.GetType () != typeof (Task)) {
+					if (_ret?.GetType () != typeof (Task)) {
 						//_ret = _ret.GetType ().InvokeMember ("Result", BindingFlags.GetProperty, null, _ret, null);
 						_ret = (_ret as dynamic).Result;
 					} else {
@@ -86,21 +86,23 @@ namespace Sparrow.HttpProtocol {
 					_ret = JWTManager.Generate (_o, _exp);
 				}
 				if (!_res.has_data ()) {
-					if (_ret is byte _byte) {
-						_res.write (_byte);
-					} else if (_ret is byte [] _bytes) {
-						_res.write (_bytes);
-					} else {
-						string _content = (_ret == null ? "" : (_ret.GetType ().IsPrimitive ? _ret.to_str () : _ret.to_json ()));
-						object _o;
-						if (_content == "") {
-							_o = new { result = "success" };
-						} else if (_content[0] != '[' && _content[0] != '{') {
-							_o = new { result = "success", content = _content };
+					if (_ret != null) {
+						if (_ret is byte _byte) {
+							_res.write (_byte);
+						} else if (_ret is byte [] _bytes) {
+							_res.write (_bytes);
 						} else {
-							_o = new { result = "success", content = JToken.Parse (_content) };
+							string _content = (_ret.GetType ().IsPrimitive ? _ret.to_str () : _ret.to_json ());
+							object _o;
+							if (_content == "") {
+								_o = new { result = "success" };
+							} else if (_content[0] != '[' && _content[0] != '{') {
+								_o = new { result = "success", content = _content };
+							} else {
+								_o = new { result = "success", content = JToken.Parse (_content) };
+							}
+							_res.write (_o.to_json ());
 						}
-						_res.write (_o.to_json ());
 					}
 				}
 			} catch (TargetInvocationException ex) {

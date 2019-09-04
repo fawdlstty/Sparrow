@@ -102,6 +102,7 @@ namespace Sparrow.Swagger {
 				["JObject"] = "string",
 				["String"] = "string",
 				["ValueTuple`2"] = "--image--",
+				["JObject"] = "--json--",
 			};
 			if (_param_type.Contains ('.'))
 				_param_type = _param_type.mid_last (".");
@@ -114,7 +115,7 @@ namespace Sparrow.Swagger {
 				if (m_modules [i].m_name == _module_name) {
 					for (int j = 0; j < m_modules [i].m_methods.Count; ++j) {
 						if (m_modules [i].m_methods [j].m_request_type == _request_type && m_modules [i].m_methods [j].m_name == _method_name) {
-							if (_param_type == "--image--")
+							if (_param_type == "--image--" || _param_type == "--json--")
 								m_modules [i].m_methods [j].m_is_file = true;
 							if ((from p in m_modules [i].m_methods [j].m_params where p.m_name == _param_name select 1).Count () > 0)
 								throw new Exception ("Repeated addition of params");
@@ -201,6 +202,8 @@ namespace Sparrow.Swagger {
 						foreach (var _param in _method.m_params) {
 							if (_param.m_type == "--image--") {
 								_tmp_obj.Add (_param.m_name, new JObject { ["type"] = "string", ["format"] = "binary", ["description"] = _param.m_description });
+							} else if (_param.m_type == "--json--") {
+								_tmp_obj.Add (_param.m_name, new JObject { ["type"] = "string", ["description"] = _param.m_description });
 							} else {
 								_tmp_obj.Add (_param.m_name, new JObject { ["type"] = _param.m_type, ["description"] = _param.m_description });
 							}

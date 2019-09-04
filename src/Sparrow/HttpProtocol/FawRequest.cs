@@ -62,7 +62,17 @@ namespace Sparrow.HttpProtocol {
 			} else if (_type == typeof (double)) {
 				return _var_str.to_double ();
 			} else if (_type == typeof (JObject)) {
-				return _var_str.to_str ().json ();
+				try {
+					return JObject.Parse (_var_str);
+				} catch (JsonReaderException) {
+					throw new Exception (_var_str);
+				}
+			} else if (_type == typeof (JArray)) {
+				try {
+					return JArray.Parse (_var_str);
+				} catch (JsonReaderException) {
+					throw new Exception ($"变量 {_varname} 需要 json 参数，但传递格式非 json 格式");
+				}
 			} else if (_type == typeof (DateTime)) {
 				return _var_str.to_datetime ();
 			} else {
