@@ -22,10 +22,10 @@ namespace Sparrow {
 		public static bool is_null_or_space (this string s) { return string.IsNullOrWhiteSpace (s); }
 
 		// url 编码
-		public static string url_encode (this string s) { return HttpUtility.HtmlEncode (s); }
+		public static string url_encode (this string s) { return HttpUtility.UrlEncode (s); }
 
 		// url 解码
-		public static string url_decode (this string s) { return HttpUtility.HtmlDecode (s); }
+		public static string url_decode (this string s) { return HttpUtility.UrlDecode (s); }
 
 		// xor 0xff
 		public static byte [] xor_0xff (this byte [] b) { for (int i = 0; i < (b?.Length ?? 0); ++i) b [i] ^= 0xff; return b; }
