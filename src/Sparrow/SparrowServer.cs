@@ -91,14 +91,15 @@ namespace Sparrow {
 					if (_req.get_header ("Connection").ToLower () != "upgrade")
 						throw new MyHttpException (502);
 					var _ws_types = _req.get_header ("Sec-WebSocket-Protocol").ToLower ().Replace (" ", "").split_list (true, ',');
-					if (_ws_types.IndexOf ("chat") == -1)
-						throw new MyHttpException (501);
+					//if (_ws_types.IndexOf ("chat") == -1)
+					//	throw new MyHttpException (501);
 					if (_req.get_header ("Sec-WebSocket-Version") != "13")
 						throw new MyHttpException (501);
 					_ws_module = _req.m_path;
 					_res.m_status_code = 101;
 					_res.m_headers ["Sec-WebSocket-Accept"] = $"{_req.get_header ("Sec-WebSocket-Key")}258EAFA5-E914-47DA-95CA-C5AB0DC85B11".to_bytes ().sha1_encode ().base64_encode ();
 					_res.m_headers ["Sec-WebSocket-Version"] = "13";
+					_res.m_headers ["Upgrade"] = _req.get_header ("Upgrade");
 					//_res.m_headers ["Origin"] = "";
 					//_res.m_headers ["Sec-WebSocket-Protocol"] = "chat.";
 					//_res.m_headers ["Sec-WebSocket-Extensions"] = "";
@@ -164,12 +165,26 @@ namespace Sparrow {
 				_res.m_status_code = 500;
 				_error = true;
 			}
+			//
 			bool _go_ws = (!_ws_module.is_null ()) && (!_error);
-			_res.m_headers ["Connection"] = "Keep-Alive";
-			_res.m_headers ["Keep-Alive"] = $"timeout={(_go_ws ? 66 : 10)}, max=1000";
-			_req_stream.Write (_res.build_response (_req));
+			_res.m_headers ["Connection"] = $"{(_go_ws ? "Upgrade" : "Keep-Alive")}";
+			if (!_go_ws) {
+				_res.m_headers ["Keep-Alive"] = $"timeout={(_go_ws ? 66 : 10)}, max=1000";
+				if (!_res.m_headers.ContainsKey ("Cache-Control"))
+					_res.m_headers ["Cache-Control"] = "no-store";
+				if (!_res.m_headers.ContainsKey ("Content-Type"))
+					_res.m_headers ["Content-Type"] = "text/plain; charset=utf-8";
+			}
+			_req_stream.Write (_res.build_response (_req, _go_ws));
 			m_monitor?.OnRequest (_static, (long) ((DateTime.Now - _request_begin).TotalMilliseconds + 0.5000001), _error);
-			return (_go_ws, _ws_module, _req.get_header ("Sec-WebSocket-Key"));
+			//
+			string _api_key = "";
+			if (_go_ws) {
+				_api_key = _req.get_header ("X-API-Key");
+				if (_api_key.is_null () && _req.m_gets.ContainsKey ("X-API-Key"))
+					_api_key = _req.m_gets ["X-API-Key"];
+			}
+			return (_go_ws, _ws_module, _api_key);
 		}
 
 		// loop processing
@@ -292,7 +307,7 @@ namespace Sparrow {
 						}
 						if (m_ws_handlers.ContainsKey (_module_name))
 							throw new Exception ($"{_module_prefix}: Websocket url request address is conflict");
-						m_ws_handlers.Add (_module_prefix, _connect);
+						m_ws_handlers.Add ($"{m_api_path}{_module_prefix}", _connect);
 					}
 				}
 				m_swagger_data = _builder?.build ();
@@ -358,7 +373,8 @@ namespace Sparrow {
 					if (m_pfx != null) {
 						using (var _ssl_stream = new SslStream (_net_stream)) {
 							_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
-							_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
+							if (_ssl_stream != null)
+								_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
 							_loop_process_http (_net_stream, _ssl_stream, _src_ip);
 						}
 					} else {
@@ -385,7 +401,8 @@ namespace Sparrow {
 				//Console.WriteLine ("_request_http_once stop");
 				if (_go_ws) {
 					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
-					_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
+					if (_ssl_stream != null)
+						_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
 					_loop_process_ws (_stream, _module, _api_key);
 					break;
 				}
@@ -393,19 +410,26 @@ namespace Sparrow {
 		}
 
 		private void _loop_process_ws (Stream _stream, string _module, string _api_key) {
-			var _conn_struct = m_ws_handlers [_module];
+			var _conn_struct = m_ws_handlers [$"/{_module}"];
 			var _observer = (_api_key.is_null () ? _conn_struct.get_pure_connection () : _conn_struct.get_jwt_connection (_api_key));
+			var _send_ping_time = DateTime.Now.AddSeconds (30);
 			while (true) {
-				var _buf = new byte [] { 0, 0 };
-				// https://www.jianshu.com/p/f666da1b1835
-				CancellationTokenSource _source = new CancellationTokenSource (m_alive_websocket_ms);
-				if (_stream.ReadAsync (_buf, _source.Token).Result < 2)
-					break;
-				_source.CancelAfter (m_alive_websocket_ms);
-				bool _is_eof = (_buf [0] & 0x80) > 0;
-				if ((_buf [0] & 0x70) > 0)
-					throw new Exception ("RSV1~RSV3 is not 0");
-				// TODO: 处理连接
+				//////var _buf = new byte [] { 0, 0 };
+				//////// https://www.jianshu.com/p/f666da1b1835
+				//////CancellationTokenSource _source = new CancellationTokenSource (m_alive_websocket_ms);
+				////////int _ret = _stream.Read (_buf);
+				//////int _ret = _stream.ReadAsync (_buf, _source.Token).Result;
+				//////if (_ret < 2)
+				//////	break;
+				//////_source.CancelAfter (m_alive_websocket_ms);
+				//////bool _is_eof = (_buf [0] & 0x80) > 0;
+				//////if ((_buf [0] & 0x70) > 0)
+				//////	throw new Exception ("RSV1~RSV3 is not 0");
+				//////// TODO: 处理连接
+				int _byte1 = _stream.ReadByte ();
+				if (_byte1 == -1) {
+
+				}
 			}
 		}
 

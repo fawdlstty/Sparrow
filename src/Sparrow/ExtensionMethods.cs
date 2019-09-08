@@ -191,6 +191,37 @@ namespace Sparrow {
 			}
 		}
 
+		// 对象转定点型
+		public static decimal to_decimal (this object o) {
+			try {
+				if (o is string s) {
+					if (s.right_is_nocase ("b"))
+						s = s.left (s.Length - 1);
+					switch (s.right (1).ToLower ()) {
+						case "%":
+							return s.left (s.Length - 1).to_decimal () / 100;
+						case "k":
+							return s.left (s.Length - 1).to_decimal () * 1024;
+						case "m":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024;
+						case "g":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024 * 1024;
+						case "t":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024 * 1024 * 1024;
+						case "p":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024 * 1024 * 1024 * 1024;
+						case "e":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
+						case "b":
+							return s.left (s.Length - 1).to_decimal () * 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
+					}
+				}
+				return Convert.ToDecimal (o);
+			} catch (Exception) {
+				return 0.0M;
+			}
+		}
+
 		// 对象转布尔型
 		public static bool to_bool (this object o) {
 			try {

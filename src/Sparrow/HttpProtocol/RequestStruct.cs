@@ -106,7 +106,9 @@ namespace Sparrow.HttpProtocol {
 					}
 				}
 			} catch (TargetInvocationException ex) {
-				throw ex.InnerException;
+				if (ex.InnerException != null && ex.InnerException?.GetType () == typeof (Exception))
+					throw ex.InnerException;
+				throw ex;
 			}
 		}
 

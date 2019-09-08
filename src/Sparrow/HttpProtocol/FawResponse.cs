@@ -7,11 +7,10 @@ using System.Text;
 namespace Sparrow.HttpProtocol {
 	public class FawResponse {
 		public FawResponse () {
-			m_headers ["Cache-Control"] = "no-store";
-			m_headers ["Content-Type"] = "text/plain; charset=utf-8";
 			m_headers ["Server"] = "Sparrow/0.1";
 			m_headers ["Access-Control-Allow-Origin"] = "*";
-			m_headers ["Access-Control-Allow-Headers"] = "X-API-Key,X-Requested-With,Content-Type,Accept";
+			m_headers ["Access-Control-Allow-Credentials"] = "True";
+			m_headers ["Access-Control-Allow-Headers"] = "X-API-Key,X-Requested-With,X-Websocket-Extensions,X-Websocket-Version,X-Websocket-Protocol,Content-Type,Authorization,Accept";
 			m_headers ["Access-Control-Allow-Methods"] = "HEAD,GET,POST,PUT,DELETE,OPTIONS";
 		}
 
@@ -50,18 +49,18 @@ namespace Sparrow.HttpProtocol {
 			return m_data.Count > 0;
 		}
 
-		public byte [] build_response (FawRequest _req) {
+		public byte [] build_response (FawRequest _req, bool _upgrade_ws = false) {
 			var _data = new List<byte> ();
 			_data.AddRange ($"{_req.m_version} {m_status_code} {(m_codes.ContainsKey (m_status_code) ? m_codes [m_status_code] : "Unknown Error")}\r\n".to_bytes ());
 			//
 			string [] _encodings = (_req.m_headers.ContainsKey ("Accept-Encoding") ? _req.m_headers ["Accept-Encoding"].Split (',') : new string [0]);
 			_encodings = (from p in _encodings select p.Trim ().ToLower ()).ToArray ();
 			var _cnt_data = m_data;
-			if (Array.IndexOf (_encodings, "gzip") >= 0) {
+			if (Array.IndexOf (_encodings, "gzip") >= 0 && !_upgrade_ws) {
 				m_headers ["Content-Encoding"] = "gzip";
 				m_headers ["Vary"] = "Accept-Encoding";
 				_cnt_data = m_data.gzip_compress ();
-			} else if (Array.IndexOf (_encodings, "deflate") >= 0) {
+			} else if (Array.IndexOf (_encodings, "deflate") >= 0 && !_upgrade_ws) {
 				m_headers ["Content-Encoding"] = "deflate";
 				m_headers ["Vary"] = "Accept-Encoding";
 				_cnt_data = m_data.deflate_compress ();
@@ -70,11 +69,12 @@ namespace Sparrow.HttpProtocol {
 			foreach (var (_key, _val) in m_headers)
 				_data.AddRange ($"{_format_key (_key)}: {_val}\r\n".to_bytes ());
 			_data.AddRange ("\r\n".to_bytes ());
-			if (m_status_code != 200 && _cnt_data.Count == 0) {
-				_data.AddRange (m_codes [m_status_code].to_bytes ());
-			} else {
-				_data.AddRange (_cnt_data);
-			}
+			//if (m_status_code != 200 && m_status_code != 101 && _cnt_data.Count == 0) {
+			//	_data.AddRange (m_codes [m_status_code].to_bytes ());
+			//} else {
+			//	_data.AddRange (_cnt_data);
+			//}
+			_data.AddRange (_cnt_data);
 			return _data.ToArray ();
 		}
 
