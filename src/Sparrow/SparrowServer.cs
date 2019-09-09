@@ -412,25 +412,7 @@ namespace Sparrow {
 		private void _loop_process_ws (Stream _stream, string _module, string _api_key) {
 			var _conn_struct = m_ws_handlers [$"/{_module}"];
 			var _observer = (_api_key.is_null () ? _conn_struct.get_pure_connection () : _conn_struct.get_jwt_connection (_api_key));
-			var _send_ping_time = DateTime.Now.AddSeconds (30);
-			while (true) {
-				//////var _buf = new byte [] { 0, 0 };
-				//////// https://www.jianshu.com/p/f666da1b1835
-				//////CancellationTokenSource _source = new CancellationTokenSource (m_alive_websocket_ms);
-				////////int _ret = _stream.Read (_buf);
-				//////int _ret = _stream.ReadAsync (_buf, _source.Token).Result;
-				//////if (_ret < 2)
-				//////	break;
-				//////_source.CancelAfter (m_alive_websocket_ms);
-				//////bool _is_eof = (_buf [0] & 0x80) > 0;
-				//////if ((_buf [0] & 0x70) > 0)
-				//////	throw new Exception ("RSV1~RSV3 is not 0");
-				//////// TODO: 处理连接
-				int _byte1 = _stream.ReadByte ();
-				if (_byte1 == -1) {
-
-				}
-			}
+			_observer._main_loop (_stream);
 		}
 
 

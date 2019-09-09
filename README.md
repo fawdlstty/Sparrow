@@ -6,6 +6,8 @@
 
 ## Description / 描述
 
+Sparrow = Minimal for **[Kestrel + WebSocket + AutoDoc + Monitor]**
+
 Sparrow is a C# HTTP/REST/RPC/WebSocket Network Library, it can be very easy to act as an HTTP server or heterogeneous RPC service provider, Suitable for single server development (consider adding a master-slave later to ensure 100% availability of the service), the name is from "麻雀虽小，五脏俱全".
 
 Sparrow（麻雀）是一个C#的 HTTP/REST/RPC/WebSocket 网络库，可以非常容易的作为HTTP服务器或异构RPC服务提供者，适合用于开发单机型服务器（后期考虑加入主从，用来保证服务的100%可用性），名称源于“麻雀虽小，五脏俱全”。
@@ -80,7 +82,7 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
-Websocket（condition/protocol）
+Websocket
 
 HTTP客户端、代理（正向、反向、匿名，受控）
 
