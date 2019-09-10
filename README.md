@@ -6,7 +6,7 @@
 
 ## Description / 描述
 
-Sparrow = Minimal for **[Kestrel + WebSocket + AutoDoc + Monitor]**
+Sparrow = Minimal for **[Kestrel + WebSocket + Doc + Monitor]**
 
 Sparrow is a C# HTTP/REST/RPC/WebSocket Network Library, it can be very easy to act as an HTTP server or heterogeneous RPC service provider, Suitable for single server development (consider adding a master-slave later to ensure 100% availability of the service), the name is from "麻雀虽小，五脏俱全".
 
