@@ -26,11 +26,6 @@ namespace Sparrow {
 			//https://www.w3cschool.cn/swaggerbootstrapui/swaggerbootstrapui-31rf32is.html
 		}
 
-		public void set_keep_alive_ms (int _http = 10000, int _websocket = 66000) {
-			m_alive_http_ms = _http;
-			m_alive_websocket_ms = _websocket;
-		}
-
 		public void set_api_path (string _api_path = "/api") {
 			m_api_path = $"{_api_path}/";
 		}
@@ -334,7 +329,7 @@ namespace Sparrow {
 								using (var _client = (TcpClient) _client_o) {
 									var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
 									var _net_stream = _client.GetStream ();
-									_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
+									_net_stream.ReadTimeout = _net_stream.WriteTimeout = 22000;
 									_loop_process_http (_net_stream, null, _src_ip);
 								}
 							} catch (TaskCanceledException) {
@@ -369,12 +364,12 @@ namespace Sparrow {
 				using (_client) {
 					var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
 					var _net_stream = _client.GetStream ();
-					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_http_ms;
+					_net_stream.ReadTimeout = _net_stream.WriteTimeout = 22000;
 					if (m_pfx != null) {
 						using (var _ssl_stream = new SslStream (_net_stream)) {
 							_ssl_stream.AuthenticateAsServer (m_pfx, false, SslProtocols.Tls, true);
 							if (_ssl_stream != null)
-								_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_http_ms;
+								_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = 21000;
 							_loop_process_http (_net_stream, _ssl_stream, _src_ip);
 						}
 					} else {
@@ -395,14 +390,11 @@ namespace Sparrow {
 				int _byte = _stream.ReadByte ();
 				if (_byte == -1)
 					return;
-				var _source = new CancellationTokenSource (m_alive_http_ms);
+				var _source = new CancellationTokenSource (21000);
 				//Console.WriteLine ("_request_http_once start");
 				var (_go_ws, _module, _api_key) = _request_http_once (_stream, _src_ip, _source.Token, (byte) _byte);
 				//Console.WriteLine ("_request_http_once stop");
 				if (_go_ws) {
-					_net_stream.ReadTimeout = _net_stream.WriteTimeout = m_alive_websocket_ms;
-					if (_ssl_stream != null)
-						_ssl_stream.ReadTimeout = _ssl_stream.WriteTimeout = m_alive_websocket_ms;
 					_loop_process_ws (_stream, _module, _api_key);
 					break;
 				}
@@ -464,9 +456,6 @@ namespace Sparrow {
 		}
 
 		private ushort m_port = 80;
-
-		private int m_alive_http_ms = 10000;
-		private int m_alive_websocket_ms = 66000;
 
 		private string m_api_path = "/api/";
 		private Assembly m_assembly = null;

@@ -1,9 +1,5 @@
 # Sparrow
 
-*This project is still being finalized and is not recommended for use in a production environment.*
-
-*这个项目还在定型阶段，不建议在生产环境中使用。*
-
 ## Description / 描述
 
 Sparrow = Minimal for **[Kestrel + WebSocket + Doc + Monitor]**
@@ -82,14 +78,12 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
-Websocket
-
 HTTP客户端、代理（正向、反向、匿名，受控）
 
 数据检查
 
 监控流量
 
-主机及程序运行监视页面（暂时考虑grafana、skywalking或自建）
+主机及程序运行监视页面（暂时考虑grafana）
 
 双机/三机主从（分布式，保证服务100%可用性）

@@ -113,7 +113,7 @@ namespace Sparrow.HttpProtocol {
 				if (_header_group.is_null ())
 					break;
 				var (_key, _val) = _header_group.split2 (':');
-				m_headers.TryAdd (_key.url_decode ().Trim (), _val.url_decode ().Trim ());
+				m_headers.TryAdd (_key.Trim (), _val.Trim ());
 			}
 			if (m_headers.ContainsKey ("Content-Length")) {
 				int _cnt_len = m_headers ["Content-Length"].to_int ();
