@@ -111,7 +111,7 @@ namespace Sparrow {
 				} else if (m_doc_info != null && !m_doc_path.is_null () && _req.m_path.left_is (m_doc_path.mid (1))) {
 					if (_req.m_path == $"{m_doc_path.mid (1)}api.json") {
 						string _host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port}" : _req.get_header ("Host"));
-						_res.write (m_swagger_data.Replace ("%-faq-host-%", _host));
+						_res.write (m_swagger_data);
 						//_host = (_req.get_header ("Host").is_null () ? $"127.0.0.1:{m_port + 1}" : _req.get_header ("Host"));
 						//_res.write (m_swagger_data.Replace ("%-faq-host1-%", _host));
 						_res.set_content_from_filename (_req.m_path);
@@ -272,7 +272,7 @@ namespace Sparrow {
 					var _ws_module_attr = _module.GetCustomAttribute (typeof (WSModuleAttribute), true) as WSModuleAttribute;
 					if (_ws_module_attr != null) {
 						string _module_prefix = (_module_name.right_is_nocase ("Module") ? _module_name.left (_module_name.Length - 6) : _module_name);
-						_builder?.add_module ($"{_module_name}_ws", _module_prefix, _ws_module_attr.m_description);
+						//_builder?.add_module ($"{_module_name}_ws", _module_prefix, _ws_module_attr.m_description);
 						//
 						ConnectStruct _connect = new ConnectStruct (_module_name, _module);
 						foreach (var _method in _module.GetMethods ()) {
@@ -316,34 +316,34 @@ namespace Sparrow {
 				//
 				var _listener = new TcpListener (IPAddress.Any, port);
 				_listener.Start ();
-				// ---test begin---
-				// ---test begin---
-				// ---test begin---
-				new Thread (() => {
-					var _listener1 = new TcpListener (IPAddress.Any, port + 1);
-					_listener1.Start ();
-					while (true) {
-						var _tmp_client = _listener1.AcceptTcpClient ();
-						ThreadPool.QueueUserWorkItem ((_client_o) => {
-							try {
-								using (var _client = (TcpClient) _client_o) {
-									var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
-									var _net_stream = _client.GetStream ();
-									_net_stream.ReadTimeout = _net_stream.WriteTimeout = 22000;
-									_loop_process_http (_net_stream, null, _src_ip);
-								}
-							} catch (TaskCanceledException) {
-							} catch (IOException) {
-							} catch (Exception ex) {
-								//Console.Write (ex.ToString ());
-								Log.show_error (ex);
-							}
-						}, _tmp_client);
-					}
-				}).Start ();
-				// ---test end---
-				// ---test end---
-				// ---test end---
+				//// ---test begin---
+				//// ---test begin---
+				//// ---test begin---
+				//new Thread (() => {
+				//	var _listener1 = new TcpListener (IPAddress.Any, port + 1);
+				//	_listener1.Start ();
+				//	while (true) {
+				//		var _tmp_client = _listener1.AcceptTcpClient ();
+				//		ThreadPool.QueueUserWorkItem ((_client_o) => {
+				//			try {
+				//				using (var _client = (TcpClient) _client_o) {
+				//					var _src_ip = _client.Client.RemoteEndPoint.to_str ().split2 (':').Item1;
+				//					var _net_stream = _client.GetStream ();
+				//					_net_stream.ReadTimeout = _net_stream.WriteTimeout = 22000;
+				//					_loop_process_http (_net_stream, null, _src_ip);
+				//				}
+				//			} catch (TaskCanceledException) {
+				//			} catch (IOException) {
+				//			} catch (Exception ex) {
+				//				//Console.Write (ex.ToString ());
+				//				Log.show_error (ex);
+				//			}
+				//		}, _tmp_client);
+				//	}
+				//}).Start ();
+				//// ---test end---
+				//// ---test end---
+				//// ---test end---
 				while (true) {
 					var _tmp_client = _listener.AcceptTcpClient ();
 					//Console.WriteLine ($"accept {_tmp_client.Client.Handle}");

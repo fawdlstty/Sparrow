@@ -62,7 +62,7 @@ namespace Sparrow.Swagger {
 					["version"] = _doc_info.Version,
 				},
 				["servers"] = new JArray { new JObject {
-					["url"] = $"{_schema}://%-faq-host-%",
+					["url"] = _doc_info.Host,
 					["description"] = "",
 				}},
 				["components"] = JObject.Parse ("{\"securitySchemes\":{\"ApiKeyAuth\":{\"type\":\"apiKey\",\"in\":\"header\",\"name\":\"X-API-Key\"}}}"),

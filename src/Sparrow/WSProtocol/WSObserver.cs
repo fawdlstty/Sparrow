@@ -7,52 +7,58 @@ using System.Threading;
 
 namespace Sparrow.WSProtocol {
 	public class WSObserver {
-		public virtual void OnRecv (byte [] _data) {}
-		public virtual void OnRecv (string _data) {}
+		public virtual void OnRecv (byte [] _data) { }
+		public virtual void OnRecv (string _data) { }
 
-		public void send (byte [] _data) {
-			_send (_data, 2);
+		public bool send (byte [] _data) {
+			return _send (_data, 2);
 		}
 
-		public void send (string content) {
-			_send (content.to_bytes (), 1);
+		public bool send (string content) {
+			return _send (content.to_bytes (), 1);
 		}
 
-		private void _send (byte [] _data, int _opcode) {
-			long _length = _data?.Length ?? 0;
-			var _send_data = new List<byte> ();
-			var _mask = new byte [4] { 255, 255, 255, 255 };
-			//byte [] _data_send = new byte [_data?.Length ?? 0];
-			//for (int i = 0; i < _data_send.Length; ++i)
-			//	_data_send [i] = (byte) (_data [i] ^ _data_send [i % 4]);
-			if (_length < 126) {
-				_send_data.Add ((byte) (0x80 | _opcode));
-				_send_data.Add ((byte) (/*0x80 |*/ _length));
-				//_send_data.AddRange (_mask);
-				if (_length > 0)
+		private bool _send (byte [] _data, int _opcode) {
+			try {
+				long _length = _data?.Length ?? 0;
+				var _send_data = new List<byte> ();
+				var _mask = new byte [4] { 255, 255, 255, 255 };
+				//byte [] _data_send = new byte [_data?.Length ?? 0];
+				//for (int i = 0; i < _data_send.Length; ++i)
+				//	_data_send [i] = (byte) (_data [i] ^ _data_send [i % 4]);
+				if (_length < 126) {
+					_send_data.Add ((byte) (0x80 | _opcode));
+					_send_data.Add ((byte) (/*0x80 |*/ _length));
+					//_send_data.AddRange (_mask);
+					if (_length > 0)
+						_send_data.AddRange (_data);
+				} else if (_length <= 0xffff) {
+					_send_data.Add ((byte) (0x80 | _opcode));
+					_send_data.Add ((byte) (/*0x80 |*/ 126));
+					_send_data.Add ((byte) ((_length >> 8) & 0xff));
+					_send_data.Add ((byte) (_length & 0xff));
+					_send_data.AddRange (_mask);
 					_send_data.AddRange (_data);
-			} else if (_length <= 0xffff) {
-				_send_data.Add ((byte) (0x80 | _opcode));
-				_send_data.Add ((byte) (/*0x80 |*/ 126));
-				_send_data.Add ((byte) ((_length >> 8) & 0xff));
-				_send_data.Add ((byte) (_length & 0xff));
-				_send_data.AddRange (_mask);
-				_send_data.AddRange (_data);
-			} else {
-				_send_data.Add ((byte) (0x80 | _opcode));
-				_send_data.Add ((byte) (/*0x80 |*/ 127));
-				_send_data.Add ((byte) ((_length >> 56) & 0xff));
-				_send_data.Add ((byte) ((_length >> 48) & 0xff));
-				_send_data.Add ((byte) ((_length >> 40) & 0xff));
-				_send_data.Add ((byte) ((_length >> 32) & 0xff));
-				_send_data.Add ((byte) ((_length >> 24) & 0xff));
-				_send_data.Add ((byte) ((_length >> 16) & 0xff));
-				_send_data.Add ((byte) ((_length >> 8) & 0xff));
-				_send_data.Add ((byte) (_length & 0xff));
-				_send_data.AddRange (_mask);
-				_send_data.AddRange (_data);
+				} else {
+					_send_data.Add ((byte) (0x80 | _opcode));
+					_send_data.Add ((byte) (/*0x80 |*/ 127));
+					_send_data.Add ((byte) ((_length >> 56) & 0xff));
+					_send_data.Add ((byte) ((_length >> 48) & 0xff));
+					_send_data.Add ((byte) ((_length >> 40) & 0xff));
+					_send_data.Add ((byte) ((_length >> 32) & 0xff));
+					_send_data.Add ((byte) ((_length >> 24) & 0xff));
+					_send_data.Add ((byte) ((_length >> 16) & 0xff));
+					_send_data.Add ((byte) ((_length >> 8) & 0xff));
+					_send_data.Add ((byte) (_length & 0xff));
+					_send_data.AddRange (_mask);
+					_send_data.AddRange (_data);
+				}
+				lock (m_stream)
+					m_stream.Write (_send_data.ToArray ());
+				return true;
+			} catch (IOException) {
+				return false;
 			}
-			m_stream.Write (_send_data.ToArray ());
 		}
 
 		internal void _main_loop (Stream _stream) {
@@ -70,25 +76,6 @@ namespace Sparrow.WSProtocol {
 				//_stream.BeginRead (_buf, 0, _buf.Length, _callback, null);
 				//
 				//
-				//CancellationTokenSource _source = new CancellationTokenSource (10000);
-				//var _buf = new byte [] { 0, 0 };
-				//int _ret = _stream.ReadAsync (_buf).Result;
-				//if (_ret < 2) {
-				//	if (_ret == 0 && !_wait_ping) {
-				//		_send_ping_time = DateTime.Now.AddSeconds (5);
-				//		_send (null, 9);
-				//		Console.WriteLine ("send ping");
-				//		_wait_ping = true;
-				//		_source.CancelAfter (10000);
-				//		continue;
-				//	} else if (_ret == 1 && _buf [0] == 0) {
-				//		continue;
-				//	}
-				//	break;
-				//}
-				//_source.CancelAfter (10000);
-				//
-				//
 				int _byte1 = -1;
 				try {
 					_byte1 = _stream.ReadByte ();
@@ -102,7 +89,8 @@ namespace Sparrow.WSProtocol {
 						continue;
 					} else if (!_wait_ping) {
 						_send_ping_time = DateTime.Now.AddSeconds (5);
-						_send (null, 9);
+						if (!_send (null, 9))
+							break;
 						_wait_ping = true;
 						continue;
 					}
@@ -156,7 +144,8 @@ namespace Sparrow.WSProtocol {
 					//
 					if (_opcode == 9) {
 						// ping
-						_send (null, 10);
+						if (!_send (null, 10))
+							break;
 					} else if (_opcode == 10) {
 						// pong
 					} else {

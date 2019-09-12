@@ -28,11 +28,11 @@ namespace Sparrow.WSProtocol {
 		public void add_auth_method (MethodInfo _auth_method) {
 			if (m_auth_method != null)
 				throw new Exception ($"{m_name}.{_auth_method.Name}: jwt auth is already exists");
-			if (!m_auth_method.IsStatic)
+			if (!_auth_method.IsStatic)
 				throw new Exception ($"{m_name}.{_auth_method.Name}: jwt auth method must is static");
-			if (m_auth_method.ReturnType != m_observer_type)
+			if (_auth_method.ReturnType != m_observer_type)
 				throw new Exception ($"{m_name}.{_auth_method.Name}: jwt auth must return the object of the module in which it resides");
-			var _params = m_auth_method.GetParameters ();
+			var _params = _auth_method.GetParameters ();
 			if ((_params?.Length ?? 0) != 1 || _params [0].ParameterType != typeof (JObject))
 				throw new Exception ($"{m_name}.{_auth_method.Name}: jwt auth must has 1 argument and type is JObject");
 			m_auth_method = _auth_method;

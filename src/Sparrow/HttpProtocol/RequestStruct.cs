@@ -103,6 +103,8 @@ namespace Sparrow.HttpProtocol {
 							}
 							_res.write (_o.to_json ());
 						}
+					} else {
+						_res.write (new { result = "success" }.to_json ());
 					}
 				}
 			} catch (TargetInvocationException ex) {
