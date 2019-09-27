@@ -78,6 +78,8 @@ Run the project at this point and the document will be generated automatically. 
 
 ## TODO / 待完善
 
+cookie
+
 HTTP客户端、代理（正向、反向、匿名，受控）
 
 数据检查

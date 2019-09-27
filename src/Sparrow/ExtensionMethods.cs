@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -32,6 +33,11 @@ namespace Sparrow {
 
 		// 获取 md5
 		public static string md5 (this byte [] s) { using (var _md5 = MD5.Create ()) return BitConverter.ToString (_md5.ComputeHash (s)).Replace ("-", ""); }
+
+		// 在序列化或反序列化时可能需要用到
+		private static JsonConverter [] s_converters = new JsonConverter [] {
+			new IsoDateTimeConverter () { DateTimeFormat = "yyyyMMdd HHmmss" },
+		};
 
 		// 对象转字符串
 		public static string to_str (this object o) {

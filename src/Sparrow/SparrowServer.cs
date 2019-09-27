@@ -233,7 +233,11 @@ namespace Sparrow {
 								if (!_method.IsStatic && _jwt_reconnect_func == null)
 									throw new Exception ("A module that has a non-static HTTP method must contain the [JWTConnect] method");
 								if (!_method_attr.HideDoc)
-									_builder?.add_method (_module_name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
+									try {
+										_builder?.add_method (_module_name, _method_attr.Type, _method.Name, !_method.IsStatic, _method_attr.Summary, _method_attr.Description);
+									} catch (Exception ex) {
+										Log.show_error (ex);
+									}
 								//
 								string _path_prefix = $"{m_api_path}{_module_prefix}/{_method.Name}";
 								foreach (var _param in _params) {

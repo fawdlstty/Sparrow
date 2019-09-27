@@ -101,14 +101,18 @@ namespace Sparrow.Swagger {
 				["Int64"] = "integer",
 				["JObject"] = "string",
 				["String"] = "string",
+				["DateTime"] = "string",
 				["ValueTuple`2"] = "--image--",
 				["JObject"] = "--json--",
 			};
 			if (_param_type.Contains ('.'))
 				_param_type = _param_type.mid_last (".");
 			bool _is_json = (_param_type == "JObject");
-			if (_convert_type.ContainsKey (_param_type))
+			if (_convert_type.ContainsKey (_param_type)) {
 				_param_type = _convert_type [_param_type];
+			} else {
+				_param_type = "string";
+			}
 			if (_module_name.is_null () || _method_name.is_null () || _param_name.is_null ())
 				throw new Exception ("Name format error");
 			for (int i = m_modules.Count - 1; i >= 0; --i) {
